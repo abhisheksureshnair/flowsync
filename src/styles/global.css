@@ -1,0 +1,210 @@
+:root {
+  --background: #0B1020;
+  --primary: #5B8CFF;
+  --primary-dim: #B2C5FF;
+  --secondary: #41EE82;
+  --secondary-dim: #2FE378;
+  --tertiary: #FFB874;
+  --surface: #11131A;
+  --surface-low: #191B22;
+  --surface-lowest: #0C0E15;
+  --surface-container: #1D1F26;
+  --surface-high: #282A31;
+  --surface-highest: #33343C;
+  --on-background: #E1E2EC;
+  --on-surface: #E1E2EC;
+  --on-surface-variant: #C3C6D6;
+  --outline: #8D909F;
+  --outline-variant: #434653;
+  --error: #FFB4AB;
+  --error-container: #93000A;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--background);
+  color: var(--on-background);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Common Layout Wrapper */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 260px; /* Sidebar width */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--background);
+}
+
+/* Glassmorphism Cards */
+.glass-card {
+  background: rgba(20, 26, 47, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(67, 70, 83, 0.3);
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(91, 140, 255, 0.4);
+  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.5);
+}
+
+/* Glowing Elements */
+.glow-primary {
+  box-shadow: 0 0 15px rgba(91, 140, 255, 0.3);
+}
+
+.active-pill {
+  box-shadow: 0 0 15px rgba(91, 140, 255, 0.3);
+}
+
+/* Custom Scrollbars */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--outline-variant);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--outline);
+}
+
+/* Top Header Styles */
+.top-header {
+  height: 64px;
+  background: rgba(17, 19, 26, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(67, 70, 83, 0.3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 40px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.header-search {
+  display: flex;
+  align-items: center;
+  background: var(--surface-low);
+  border: 1px solid rgba(67, 70, 83, 0.3);
+  border-radius: 20px;
+  padding: 6px 16px;
+  width: 320px;
+  transition: all 0.3s ease;
+}
+
+.header-search:focus-within {
+  width: 380px;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(91, 140, 255, 0.15);
+}
+
+.header-search input {
+  background: transparent;
+  border: none;
+  color: var(--on-surface);
+  font-size: 14px;
+  margin-left: 8px;
+  outline: none;
+  width: 100%;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+  padding: 4px;
+  border-radius: 50%;
+}
+
+.icon-btn:hover {
+  color: var(--primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(91, 140, 255, 0.3);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background-color: var(--surface-high);
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background-color: var(--surface-highest);
+}
+
+/* Animations */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+.animate-glow {
+  animation: pulse-soft 3s infinite ease-in-out;
+}
