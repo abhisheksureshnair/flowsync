@@ -44,11 +44,11 @@ body {
 
 .main-content {
   flex: 1;
-  margin-left: 260px; /* Sidebar width */
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: var(--background);
+  transition: padding 0.3s ease; /* optional smooth transition if needed */
 }
 
 /* Glassmorphism Cards */

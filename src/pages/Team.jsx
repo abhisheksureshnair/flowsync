@@ -1,257 +1,283 @@
-import React from "react";
+import React, { useState } from "react";
 import Sidebar from "../components/layout/Sidebar";
+import Modal from "../components/ui/Modal";
+import Toast from "../components/ui/Toast";
 import "../styles/global.css";
-import "../styles/team.css";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "motion/react";
+import { 
+  FiSearch, 
+  FiBell, 
+  FiUserPlus, 
+  FiFilter, 
+  FiMoreHorizontal,
+  FiMessageCircle,
+  FiMail,
+  FiTrendingUp,
+  FiActivity
+} from "react-icons/fi";
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: { y: 0, opacity: 1, transition: { duration: 0.4, ease: "easeOut" } }
+};
+
+const INITIAL_TEAM = [
+  {
+    id: "mem-1",
+    name: "Alex Rivera",
+    role: "Senior Product Designer",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
+    status: "online",
+    changeLabel: "Weekly Velocity",
+    changeVal: "+12%",
+    projects: 4
+  },
+  {
+    id: "mem-2",
+    name: "Sarah Chen",
+    role: "Lead Frontend Engineer",
+    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&q=80",
+    status: "online",
+    changeLabel: "Code Output",
+    changeVal: "+8%",
+    projects: 6
+  },
+  {
+    id: "mem-3",
+    name: "Marcus Thorne",
+    role: "Backend Architect",
+    avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=150&q=80",
+    status: "away",
+    changeLabel: "Uptime Contribution",
+    changeVal: "Stable",
+    projects: 3
+  },
+  {
+    id: "mem-4",
+    name: "Elena Rostova",
+    role: "Data Scientist",
+    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80",
+    status: "offline",
+    changeLabel: "Model Accuracy",
+    changeVal: "+2%",
+    projects: 2
+  },
+  {
+    id: "mem-5",
+    name: "Jordan Lee",
+    role: "Product Manager",
+    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80",
+    status: "online",
+    changeLabel: "Sprint Completion",
+    changeVal: "94%",
+    projects: 8
+  }
+];
 
 function Team() {
-  const teamMembers = [
-    {
-      id: "mem-1",
-      name: "Alex Rivera",
-      role: "Senior Product Designer",
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80",
-      status: "online",
-      changeLabel: "Weekly Velocity",
-      changeVal: "+12%",
-      sparkline: "M0,30 Q20,10 40,25 T80,15 T120,35 T160,5 T200,20"
-    },
-    {
-      id: "mem-2",
-      name: "Sarah Chen",
-      role: "Lead Frontend Engineer",
-      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=100&q=80",
-      status: "online",
-      changeLabel: "Code Output",
-      changeVal: "+8%",
-      sparkline: "M0,20 Q20,35 40,15 T80,5 T120,25 T160,10 T200,5"
-    },
-    {
-      id: "mem-3",
-      name: "Marcus Thorne",
-      role: "Backend Architect",
-      avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=100&q=80",
+  const navigate = useNavigate();
+  const [teamMembers, setTeamMembers] = useState(INITIAL_TEAM);
+  
+  const [isInviteModalOpen, setInviteModalOpen] = useState(false);
+  const [toastMsg, setToastMsg] = useState("");
+  
+  const [inviteData, setInviteData] = useState({ email: "", role: "Member" });
+
+  const handleInviteSubmit = (e) => {
+    e.preventDefault();
+    if(!inviteData.email.trim()) return;
+
+    // Determine name from email
+    const namePart = inviteData.email.split('@')[0];
+    const name = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+
+    const newMember = {
+      id: `mem-${Date.now()}`,
+      name: name,
+      role: inviteData.role,
+      avatar: `https://api.dicebear.com/7.x/notionists/svg?seed=${name}`,
       status: "away",
-      changeLabel: "Uptime Contribution",
-      changeVal: "Stable",
-      sparkline: "M0,35 Q20,35 40,25 T80,30 T120,20 T160,15 T200,10"
-    }
-  ];
+      changeLabel: "Pending",
+      changeVal: "-",
+      projects: 0
+    };
+
+    setTeamMembers([newMember, ...teamMembers]);
+    setInviteModalOpen(false);
+    setInviteData({ email: "", role: "Member" });
+    setToastMsg(`Invitation sent to ${inviteData.email}`);
+  };
 
   return (
     <div className="app-layout">
-      {/* Navigation Sidebar */}
       <Sidebar />
 
-      {/* Main Body */}
       <div className="main-content">
         <header className="top-header">
           <div className="header-search">
-            <span className="material-symbols-outlined">search</span>
+            <FiSearch size={18} color="var(--on-surface-variant)" />
             <input type="text" placeholder="Search team members..." />
           </div>
           <div className="header-actions">
-            <button className="btn-secondary">Quick Actions</button>
-            <button className="btn-primary">Create</button>
-            <div className="header-divider"></div>
-            <button className="icon-btn">
-              <span className="material-symbols-outlined">notifications</span>
+            <button className="btn-secondary" onClick={() => setToastMsg("Quick actions menu")}>Quick Actions</button>
+            <button className="btn-primary" onClick={() => setInviteModalOpen(true)}>
+              <FiUserPlus size={16} style={{ marginRight: '6px' }} />
+              Invite
             </button>
-            <button className="icon-btn">
-              <span className="material-symbols-outlined">group</span>
-            </button>
+            <div className="header-divider" style={{ width: '1px', height: '24px', background: 'var(--outline-variant)' }}></div>
+            <button className="icon-btn" onClick={() => setToastMsg("No new notifications")}><FiBell size={20} /></button>
           </div>
         </header>
 
-        <div className="team-container custom-scrollbar">
-          {/* Header Block */}
-          <div className="team-header">
-            <div>
-              <h2 className="team-title">Core Team</h2>
-              <p className="team-subtitle">Manage your workspace collaborators and their permissions.</p>
-            </div>
-            <div className="team-action-bar">
-              <button className="filter-btn">
-                <span className="material-symbols-outlined">filter_list</span>
-                <span>Filter</span>
-              </button>
-              <button className="btn-primary flex-center gap-sm">
-                <span className="material-symbols-outlined font-md">person_add</span>
-                <span>Invite Member</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Bento grid of collaborators */}
-          <div className="team-grid">
-            {teamMembers.map((member) => (
-              <div key={member.id} className="team-card glass-card">
-                <div className="team-card-header">
-                  <div className="avatar-wrapper">
-                    <img src={member.avatar} alt={member.name} className="member-avatar" />
-                    <span className={`status-dot ${member.status}`}></span>
-                  </div>
-                  <button className="icon-btn"><span className="material-symbols-outlined">more_horiz</span></button>
-                </div>
-                
-                <div className="member-details">
-                  <h4 className="member-name">{member.name}</h4>
-                  <span className="member-role">{member.role}</span>
-                </div>
-
-                {/* SVG sparkline chart */}
-                <div className="sparkline-container">
-                  <svg className="sparkline-chart" viewBox="0 0 200 40">
-                    <defs>
-                      <linearGradient id={`grad-${member.id}`} x1="0%" x2="0%" y1="0%" y2="100%">
-                        <stop offset="0%" style={{ stopColor: "#5B8CFF", stopOpacity: 0.2 }} />
-                        <stop offset="100%" style={{ stopColor: "#5B8CFF", stopOpacity: 0 }} />
-                      </linearGradient>
-                    </defs>
-                    <path className="sparkline-path" d={member.sparkline}></path>
-                    <path className="sparkline-fill" d={`${member.sparkline} V40 H0 Z`} fill={`url(#grad-${member.id})`}></path>
-                  </svg>
-                </div>
-
-                <div className="team-card-footer">
-                  <span className="footer-label">{member.changeLabel}</span>
-                  <span className={`footer-val ${member.changeVal.includes("+") ? "text-secondary" : ""}`}>{member.changeVal}</span>
-                </div>
+        <div className="dashboard-scroll-area custom-scrollbar">
+          <motion.div 
+            className="dashboard-canvas"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            style={{ maxWidth: '1200px', padding: '0 20px', gap: '30px' }}
+          >
+            {/* Header Block */}
+            <motion.div variants={itemVariants} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+              <div>
+                <h2 style={{ fontSize: '32px', fontWeight: 600, color: 'var(--on-surface)', margin: '0 0 8px 0' }}>Core Team</h2>
+                <p style={{ fontSize: '15px', color: 'var(--on-surface-variant)', margin: 0 }}>Manage your workspace collaborators and their permissions.</p>
               </div>
-            ))}
 
-            {/* Invite card */}
-            <div className="invite-member-card glass-card border-dashed">
-              <div className="add-circle-btn">
-                <span className="material-symbols-outlined">add</span>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <button className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setToastMsg("Filter options")}>
+                  <FiFilter size={16} /> Filter
+                </button>
+                <button className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setInviteModalOpen(true)}>
+                  <FiUserPlus size={16} /> Invite Member
+                </button>
               </div>
-              <div className="invite-info">
-                <h5 className="invite-title">Add Team Member</h5>
-                <p className="invite-desc">Expand your collaboration circle</p>
-              </div>
-            </div>
-          </div>
+            </motion.div>
 
-          {/* Composition Charts */}
-          <div className="team-charts-row">
-            {/* Composition Card */}
-            <div className="composition-card glass-card">
-              <h4 className="chart-title">Team Composition</h4>
-              <div className="composition-bars">
-                {/* Bar 1 */}
-                <div className="comp-bar-item">
-                  <div className="comp-bar-meta">
-                    <span className="comp-label">Designers</span>
-                    <span className="comp-percentage">45%</span>
-                  </div>
-                  <div className="progress-track">
-                    <div className="progress-fill bg-primary shadow-glow-primary" style={{ width: "45%" }}></div>
-                  </div>
-                </div>
-                {/* Bar 2 */}
-                <div className="comp-bar-item">
-                  <div className="comp-bar-meta">
-                    <span className="comp-label">Engineers</span>
-                    <span className="comp-percentage">40%</span>
-                  </div>
-                  <div className="progress-track">
-                    <div className="progress-fill bg-secondary shadow-glow-secondary" style={{ width: "40%" }}></div>
-                  </div>
-                </div>
-                {/* Bar 3 */}
-                <div className="comp-bar-item">
-                  <div className="comp-bar-meta">
-                    <span className="comp-label">Managers</span>
-                    <span className="comp-percentage">15%</span>
-                  </div>
-                  <div className="progress-track">
-                    <div className="progress-fill bg-tertiary shadow-glow-tertiary" style={{ width: "15%" }}></div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* Team Grid */}
+            <motion.div variants={itemVariants} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
+              <AnimatePresence>
+                {teamMembers.map((member) => (
+                  <motion.div 
+                    layout
+                    key={member.id} 
+                    className="glass-card"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    whileHover={{ y: -5, boxShadow: '0 12px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(91,140,255,0.4)' }}
+                    transition={{ duration: 0.2 }}
+                    style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+                  >
+                    <div style={{ padding: '24px', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                      <button className="icon-btn" style={{ position: 'absolute', top: '16px', right: '16px' }} onClick={() => setToastMsg(`More options for ${member.name}`)}>
+                        <FiMoreHorizontal size={20} />
+                      </button>
 
-            {/* Pulse Rating Card */}
-            <div className="pulse-rating-card glass-card">
-              <div className="pulse-meta-block">
-                <h4 className="chart-title">Pulse Rating</h4>
-                <div className="pulse-number-display">
-                  98.4<span className="percent-sign">%</span>
-                </div>
-                <p className="pulse-desc-text">Collaboration health is at its peak this month.</p>
-              </div>
-              
-              <div className="pulse-circle-widget">
-                <svg className="circular-widget-svg" viewBox="0 0 128 128">
-                  <circle cx="64" cy="64" r="56" className="circle-bg" />
-                  <circle cx="64" cy="64" r="56" className="circle-fill" />
-                </svg>
-                <span className="material-symbols-outlined bolt-icon animate-glow">bolt</span>
-              </div>
-            </div>
-          </div>
+                      <div style={{ position: 'relative', width: '80px', height: '80px', marginBottom: '16px' }}>
+                        <img 
+                          src={member.avatar} 
+                          alt={member.name} 
+                          style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--surface-low)' }} 
+                        />
+                        <span style={{
+                          position: 'absolute',
+                          bottom: '4px',
+                          right: '4px',
+                          width: '12px',
+                          height: '12px',
+                          borderRadius: '50%',
+                          border: '2px solid var(--surface-low)',
+                          backgroundColor: member.status === 'online' ? 'var(--secondary)' : 
+                                           member.status === 'away' ? 'var(--tertiary)' : 
+                                           'var(--outline)'
+                        }}></span>
+                      </div>
+
+                      <h4 style={{ fontSize: '18px', fontWeight: 600, margin: '0 0 4px 0', color: 'var(--on-surface)' }}>{member.name}</h4>
+                      <span style={{ fontSize: '13px', color: 'var(--primary)', fontWeight: 500 }}>{member.role}</span>
+
+                      <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                        <button className="btn-secondary" style={{ padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => navigate('/chat')}>
+                          <FiMessageCircle size={16} />
+                        </button>
+                        <button className="btn-secondary" style={{ padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setToastMsg(`Email client opened for ${member.name}`)}>
+                          <FiMail size={16} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Stats Footer */}
+                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px 24px', borderTop: '1px solid rgba(67, 70, 83, 0.3)', display: 'flex', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--outline)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{member.changeLabel}</span>
+                        <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--on-surface)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          {member.changeVal !== '-' && <FiTrendingUp size={14} color="var(--secondary)" />} {member.changeVal}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--outline)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Projects</span>
+                        <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--on-surface)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <FiActivity size={14} color="var(--primary)" /> {member.projects}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          </motion.div>
         </div>
       </div>
 
-      {/* Right Sidebar - Team Pulse */}
-      <aside className="dashboard-sidebar custom-scrollbar">
-        <div className="pulse-header">
-          <span className="pulse-tag">Team Pulse</span>
-          <h3 className="pulse-title">Live Updates</h3>
-        </div>
-
-        <div className="activity-timeline-container flex-1">
-          <div className="timeline-activity">
-            <div className="timeline-item">
-              <div className="timeline-icon bg-surface-high text-primary">
-                <span className="material-symbols-outlined">history</span>
-              </div>
-              <div className="timeline-content">
-                <p className="activity-text"><strong>Sarah Chen</strong> pushed 12 commits to <span className="text-primary">flow-sync-core</span></p>
-                <span className="activity-time">2 mins ago</span>
-              </div>
-            </div>
-            <div className="timeline-item">
-              <div className="timeline-icon bg-secondary">
-                <span className="material-symbols-outlined">check_circle</span>
-              </div>
-              <div className="timeline-content">
-                <p className="activity-text"><strong>Alex Rivera</strong> completed 4 tasks in <span className="text-secondary">Sprint Beta</span></p>
-                <span className="activity-time">15 mins ago</span>
-              </div>
-            </div>
-            <div className="timeline-item">
-              <div className="timeline-icon bg-surface-high text-tertiary">
-                <span className="material-symbols-outlined">comment</span>
-              </div>
-              <div className="timeline-content">
-                <p className="activity-text"><strong>Marcus Thorne</strong> replied to your comment</p>
-                <span className="activity-time">1 hour ago</span>
-              </div>
-            </div>
+      {/* Invite Member Modal */}
+      <Modal isOpen={isInviteModalOpen} onClose={() => setInviteModalOpen(false)} title="Invite Team Member">
+        <form onSubmit={handleInviteSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          <div style={{ padding: '16px', background: 'rgba(91, 140, 255, 0.1)', borderRadius: '8px', border: '1px solid rgba(91, 140, 255, 0.2)' }}>
+            <p style={{ margin: 0, fontSize: '14px', color: 'var(--primary)' }}>Invited members will receive an email to join your FlowSync workspace.</p>
           </div>
 
-          <div className="upcoming-events-block">
-            <h5 className="section-sub-title mb-md">Upcoming</h5>
-            <div className="glass-card p-md rounded-xl event-highlight-card">
-              <div className="event-info-row">
-                <span className="material-symbols-outlined text-primary">event_upcoming</span>
-                <span className="highlight-event-title">Design Review</span>
-              </div>
-              <p className="highlight-event-time">Today, 4:00 PM</p>
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--on-surface-variant)' }}>Email Address</label>
+            <input 
+              type="email" 
+              required
+              placeholder="e.g. sarah@company.com"
+              value={inviteData.email}
+              onChange={(e) => setInviteData({...inviteData, email: e.target.value})}
+              className="form-input" 
+              style={{ width: '100%', padding: '12px 16px', background: 'var(--surface-high)', border: '1px solid var(--outline-variant)', borderRadius: '8px', color: 'var(--on-surface)', outline: 'none' }} 
+            />
           </div>
-        </div>
 
-        <div className="team-huddle-box glass-card bg-glow-blue">
-          <div className="huddle-header">
-            <div className="avatar-wrapper-mini">
-              <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=60&q=80" alt="Sync Avatar" className="mini-sync-avatar" />
-            </div>
-            <span className="huddle-title">Team Sync Active</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--on-surface-variant)' }}>Workspace Role</label>
+            <select 
+              value={inviteData.role}
+              onChange={(e) => setInviteData({...inviteData, role: e.target.value})}
+              className="form-input" 
+              style={{ width: '100%', padding: '12px 16px', background: 'var(--surface-high)', border: '1px solid var(--outline-variant)', borderRadius: '8px', color: 'var(--on-surface)', outline: 'none' }}
+            >
+              <option>Member</option>
+              <option>Manager</option>
+              <option>Admin</option>
+            </select>
           </div>
-          <button className="join-huddle-btn">Join Huddle</button>
-        </div>
-      </aside>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+            <button type="button" className="btn-secondary" onClick={() => setInviteModalOpen(false)}>Cancel</button>
+            <button type="submit" className="btn-primary">Send Invite</button>
+          </div>
+        </form>
+      </Modal>
+
+      <Toast message={toastMsg} onClose={() => setToastMsg("")} />
     </div>
   );
 }

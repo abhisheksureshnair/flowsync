@@ -1,7 +1,6 @@
 .sidebar-container {
-  width: 260px;
   height: 100vh;
-  position: fixed;
+  position: sticky;
   left: 0;
   top: 0;
   background-color: var(--surface-low);
@@ -10,6 +9,7 @@
   flex-direction: column;
   padding: 24px 16px;
   z-index: 50;
+  overflow: hidden;
 }
 
 .brand-header {

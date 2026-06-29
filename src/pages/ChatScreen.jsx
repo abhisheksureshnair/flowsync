@@ -1,29 +1,42 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Sidebar from "../components/layout/Sidebar";
+import Modal from "../components/ui/Modal";
+import Toast from "../components/ui/Toast";
 import "../styles/global.css";
-import "../styles/chatscreen.css";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "motion/react";
+import { 
+  FiSearch, 
+  FiBell, 
+  FiPlus, 
+  FiHash, 
+  FiMessageCircle, 
+  FiMoreVertical,
+  FiSend,
+  FiPaperclip,
+  FiSmile
+} from "react-icons/fi";
 
-function ChatScreen() {
-  const [inputText, setInputText] = useState("");
+const messageVariants = {
+  hidden: { y: 10, opacity: 0, scale: 0.95 },
+  visible: { y: 0, opacity: 1, scale: 1, transition: { type: "spring", stiffness: 300, damping: 24 } }
+};
 
-  const channelsList = [
-    { name: "general", active: false },
-    { name: "design-sync", active: true, unread: false, isPrimary: true },
-    { name: "engineering", active: false },
-    { name: "marketing", active: false, badge: 12 }
-  ];
+const INITIAL_CHANNELS = [
+  { id: "c1", name: "general", badge: 0 },
+  { id: "c2", name: "design-sync", badge: 0 },
+  { id: "c3", name: "engineering", badge: 0 },
+  { id: "c4", name: "marketing", badge: 12 }
+];
 
-  const messages = [
+const INITIAL_MESSAGES = {
+  "c2": [
     {
       id: "msg-1",
-      sender: "Marcus Chen",
+      sender: "Marcus Thorne",
       time: "10:42 AM",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=60&q=80",
+      avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=60&q=80",
       content: "Hey team! I've uploaded the latest high-fidelity wireframes for the user dashboard. Let me know what you think about the new glassmorphic widgets.",
-      reactions: [
-        { emoji: "🔥", count: 4, active: true },
-        { emoji: "🚀", count: 2 }
-      ],
       self: false
     },
     {
@@ -36,300 +49,296 @@ function ChatScreen() {
     },
     {
       id: "msg-3",
-      sender: "Sarah Jenkins",
-      time: "11:02 AM",
+      sender: "Sarah Chen",
+      time: "10:50 AM",
       avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=60&q=80",
-      content: "I've added some comments in Figma regarding the mobile responsiveness of the grid.",
-      file: {
-        name: "mobile_grid_specs_v2.pdf",
-        size: "2.4 MB",
-        type: "PDF"
-      },
-      repliesCount: 4,
+      content: "Agreed. Do we need to update the CSS tokens for the new primary glow color before merging?",
       self: false
     }
-  ];
+  ]
+};
+
+function ChatScreen() {
+  const navigate = useNavigate();
+  const [inputText, setInputText] = useState("");
+  
+  // State
+  const [channels, setChannels] = useState(INITIAL_CHANNELS);
+  const [activeChannelId, setActiveChannelId] = useState("c2");
+  const [messagesData, setMessagesData] = useState(INITIAL_MESSAGES);
+  
+  const [isAddChannelOpen, setAddChannelOpen] = useState(false);
+  const [newChannelName, setNewChannelName] = useState("");
+  const [toastMsg, setToastMsg] = useState("");
+
+  const chatContainerRef = useRef(null);
+
+  const activeChannel = channels.find(c => c.id === activeChannelId);
+  const currentMessages = messagesData[activeChannelId] || [];
+
+  useEffect(() => {
+    // Scroll to bottom when messages change
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [currentMessages]);
+
+  const handleSend = (e) => {
+    e.preventDefault();
+    if (!inputText.trim()) return;
+    
+    const newMsg = {
+      id: `msg-${Date.now()}`,
+      sender: "Alex Rivera",
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&q=80",
+      content: inputText,
+      self: true
+    };
+    
+    setMessagesData({
+      ...messagesData,
+      [activeChannelId]: [...currentMessages, newMsg]
+    });
+    setInputText("");
+  };
+
+  const handleAddChannel = (e) => {
+    e.preventDefault();
+    if (!newChannelName.trim()) return;
+
+    const formattedName = newChannelName.toLowerCase().replace(/\s+/g, '-');
+    const newChan = { id: `c-${Date.now()}`, name: formattedName, badge: 0 };
+    
+    setChannels([...channels, newChan]);
+    setActiveChannelId(newChan.id);
+    setAddChannelOpen(false);
+    setNewChannelName("");
+    setToastMsg(`Channel #${formattedName} created!`);
+  };
+
+  const selectChannel = (id) => {
+    setActiveChannelId(id);
+    // Clear badge if exists
+    setChannels(channels.map(c => c.id === id ? { ...c, badge: 0 } : c));
+  };
 
   return (
     <div className="app-layout">
-      {/* Sidebar navigation */}
       <Sidebar />
 
-      {/* Main Chat Layout (contains Channel sidebar, Chat stream, and details right-sidebar) */}
-      <div className="chat-layout-wrapper">
+      <div className="main-content" style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
         
-        {/* Left inner-sidebar: Channels list */}
-        <aside className="channels-sidebar">
-          <div className="channels-title-block">
-            <h3 className="channels-title">Channels</h3>
-            <span className="material-symbols-outlined hover-text-primary pointer">add_box</span>
+        <header className="top-header" style={{ flexShrink: 0 }}>
+          <div className="header-search">
+            <FiSearch size={18} color="var(--on-surface-variant)" />
+            <input type="text" placeholder="Search messages, files..." />
           </div>
-          <div className="channels-list">
-            {channelsList.map((ch, idx) => (
-              <div 
-                key={idx} 
-                className={`channel-item-row ${ch.active ? "active" : ""}`}
-              >
-                <div className="channel-name-block">
-                  <span className="hash-symbol">#</span>
-                  <span className="channel-name-label">{ch.name}</span>
-                </div>
-                {ch.isPrimary && <span className="channel-pulsing-dot animate-glow"></span>}
-                {ch.badge && <span className="channel-badge-val">{ch.badge}</span>}
-              </div>
-            ))}
+          <div className="header-actions">
+            <button className="icon-btn" onClick={() => setToastMsg("No new notifications")}><FiBell size={20} /></button>
           </div>
-        </aside>
+        </header>
 
-        {/* Central Chat Shell */}
-        <div className="chat-main-shell">
-          {/* Header info */}
-          <header className="chat-nav-bar">
-            <div className="channel-meta-info">
-              <h2 className="active-channel-name">
-                <span className="hash-symbol">#</span> design-sync
-                <span className="material-symbols-outlined favorite-star pointer">star</span>
-              </h2>
-              <span className="channel-desc-text">Project: Nebula Mobile App Redesign</span>
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', padding: '20px', gap: '20px' }}>
+          
+          {/* Left Column: Channels */}
+          <div className="glass-card" style={{ width: '280px', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '20px 0' }}>
+            <div style={{ padding: '0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>Channels</h3>
+              <button className="icon-btn" style={{ padding: '4px' }} onClick={() => setAddChannelOpen(true)}>
+                <FiPlus size={16} />
+              </button>
             </div>
             
-            <div className="chat-actions-group">
-              <div className="members-stack-mini">
-                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=60&q=80" alt="Marcus" />
-                <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=60&q=80" alt="Sarah" />
-                <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=60&q=80" alt="Elena" />
-                <div className="stack-plus-badge">+8</div>
-              </div>
-              <div className="bar-separator"></div>
-              <button className="chat-bar-icon"><span className="material-symbols-outlined">call</span></button>
-              <button className="chat-bar-icon"><span className="material-symbols-outlined">videocam</span></button>
-              <button className="chat-bar-icon"><span className="material-symbols-outlined">info</span></button>
-            </div>
-          </header>
-
-          {/* Messages Feed */}
-          <div className="messages-stream custom-scrollbar">
-            <div className="day-divider-row">
-              <div className="line-bar"></div>
-              <span className="divider-tag-label">Yesterday</span>
-              <div className="line-bar"></div>
-            </div>
-
-            {messages.map((msg) => (
-              <div 
-                key={msg.id} 
-                className={`msg-bubble-wrapper ${msg.self ? "self-aligned" : ""}`}
-              >
-                {!msg.self && (
-                  <img src={msg.avatar} alt={msg.sender} className="sender-avatar-round" />
-                )}
-                
-                <div className="msg-body-block">
-                  <div className="msg-meta-row">
-                    <span className="sender-name-label">{msg.sender}</span>
-                    <span className="msg-time-stamp">{msg.time}</span>
-                  </div>
-
-                  <div className={`msg-text-bubble ${msg.self ? "self-style" : "other-style"}`}>
-                    <p className="msg-text-val">{msg.content}</p>
-
-                    {/* Attachment preview inside card */}
-                    {msg.file && (
-                      <div className="file-attachment-chip">
-                        <div className="file-icon-box">
-                          <span className="material-symbols-outlined">description</span>
-                        </div>
-                        <div className="file-meta">
-                          <span className="file-name-txt">{msg.file.name}</span>
-                          <span className="file-size-txt">{msg.file.size} • {msg.file.type}</span>
-                        </div>
-                        <span className="material-symbols-outlined download-arrow-icon pointer">download</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Reaction chips */}
-                  {msg.reactions && msg.reactions.length > 0 && (
-                    <div className="msg-reactions-row">
-                      {msg.reactions.map((react, i) => (
-                        <button 
-                          key={i} 
-                          className={`reaction-badge-btn ${react.active ? "active-accent" : ""}`}
-                        >
-                          <span>{react.emoji}</span>
-                          <span>{react.count}</span>
-                        </button>
-                      ))}
+            <div className="custom-scrollbar" style={{ overflowY: 'auto', flex: 1, padding: '0 12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {channels.map(channel => {
+                const isActive = channel.id === activeChannelId;
+                return (
+                  <button 
+                    key={channel.id}
+                    onClick={() => selectChannel(channel.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      background: isActive ? 'rgba(91, 140, 255, 0.1)' : 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: isActive ? 'var(--primary)' : 'var(--on-surface-variant)',
+                      transition: 'all 0.2s',
+                      textAlign: 'left'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', fontWeight: isActive ? 600 : 500 }}>
+                      <FiHash size={16} />
+                      {channel.name}
                     </div>
-                  )}
-
-                  {/* Thread reply button */}
-                  {msg.repliesCount && (
-                    <button className="thread-reply-trigger">
-                      <div className="thread-users-avatar">M</div>
-                      <span>{msg.repliesCount} replies • Last reply 5 min ago</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            <div className="day-divider-row">
-              <div className="line-bar"></div>
-              <span className="divider-tag-label">Today</span>
-              <div className="line-bar"></div>
-            </div>
-
-            {/* Typing indicator */}
-            <div className="typing-state-block">
-              <div className="typing-loader">
-                <span className="typing-circle"></span>
-                <span className="typing-circle"></span>
-                <span className="typing-circle"></span>
-              </div>
-              <p className="typing-status-txt"><strong>Jordan</strong> is typing...</p>
-            </div>
-          </div>
-
-          {/* Chat text editor bottom */}
-          <footer className="chat-footer-composer">
-            <div className="chat-composer-box glass-card">
-              <div className="composer-input-row">
-                <button className="composer-icon-btn"><span className="material-symbols-outlined">add_circle</span></button>
-                <textarea 
-                  className="composer-textarea custom-scrollbar" 
-                  placeholder="Message #design-sync..."
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  rows="1"
-                ></textarea>
-                <div className="composer-action-controls">
-                  <button className="composer-icon-btn"><span className="material-symbols-outlined">mood</span></button>
-                  <button className="composer-icon-btn"><span className="material-symbols-outlined">alternate_email</span></button>
-                  <div className="actions-vertical-line"></div>
-                  <button className="composer-send-btn glow-primary">
-                    <span className="material-symbols-outlined">send</span>
+                    {channel.badge > 0 && (
+                      <span style={{ background: 'var(--primary)', color: 'white', fontSize: '11px', fontWeight: 700, padding: '2px 6px', borderRadius: '10px' }}>
+                        {channel.badge}
+                      </span>
+                    )}
                   </button>
-                </div>
-              </div>
+                );
+              })}
 
-              <div className="composer-helper-row">
-                <div className="composer-ai-status animate-glow">
-                  <span className="material-symbols-outlined bolt-icon-small">bolt</span>
-                  <span>AI Summary enabled</span>
+              <h4 style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--outline)', margin: '24px 8px 8px 8px', fontWeight: 600 }}>Direct Messages</h4>
+              
+              <button 
+                onClick={() => setToastMsg("Direct messages feature coming soon")}
+                style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--on-surface-variant)' }}
+              >
+                <div style={{ position: 'relative' }}>
+                  <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=60&q=80" alt="Sarah" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />
+                  <span style={{ position: 'absolute', bottom: 0, right: 0, width: '8px', height: '8px', background: 'var(--secondary)', borderRadius: '50%', border: '2px solid var(--surface-low)' }}></span>
                 </div>
-                <div className="composer-media-options">
-                  <span className="material-symbols-outlined pointer hover-text-primary">mic</span>
-                  <span className="material-symbols-outlined pointer hover-text-primary">video_call</span>
-                  <span className="material-symbols-outlined pointer hover-text-primary">screen_share</span>
+                <span style={{ fontSize: '15px', fontWeight: 500 }}>Sarah Chen</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Right Column: Chat Window */}
+          <div className="glass-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(67, 70, 83, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FiHash size={18} color="var(--outline)" />
+                  {activeChannel?.name || "Select a channel"}
+                </h3>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--on-surface-variant)' }}>Company communications</p>
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ display: 'flex' }}>
+                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&q=80" alt="Alex" style={{ width: '32px', height: '32px', borderRadius: '50%', border: '2px solid var(--surface)', marginLeft: '-8px' }} />
+                  <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=60&q=80" alt="Sarah" style={{ width: '32px', height: '32px', borderRadius: '50%', border: '2px solid var(--surface)', marginLeft: '-8px' }} />
                 </div>
+                <button className="icon-btn" onClick={() => setToastMsg("Channel settings")}><FiMoreVertical size={20} /></button>
               </div>
             </div>
-          </footer>
+
+            <div ref={chatContainerRef} className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {currentMessages.length === 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--on-surface-variant)' }}>
+                  <FiMessageCircle size={48} style={{ opacity: 0.2, marginBottom: '16px' }} />
+                  <p>This is the start of the <strong>#{activeChannel?.name}</strong> channel.</p>
+                </div>
+              ) : (
+                <AnimatePresence initial={false}>
+                  {currentMessages.map((msg) => (
+                    <motion.div 
+                      key={msg.id}
+                      variants={messageVariants}
+                      initial="hidden"
+                      animate="visible"
+                      layout
+                      style={{ 
+                        display: 'flex', 
+                        gap: '16px', 
+                        alignSelf: msg.self ? 'flex-end' : 'flex-start',
+                        flexDirection: msg.self ? 'row-reverse' : 'row',
+                        maxWidth: '75%'
+                      }}
+                    >
+                      {!msg.self && (
+                        <img src={msg.avatar} alt={msg.sender} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                      )}
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: msg.self ? 'flex-end' : 'flex-start' }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '6px', flexDirection: msg.self ? 'row-reverse' : 'row' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--on-surface)' }}>{msg.self ? 'You' : msg.sender}</span>
+                          <span style={{ fontSize: '11px', color: 'var(--outline)' }}>{msg.time}</span>
+                        </div>
+                        
+                        <div style={{ 
+                          background: msg.self ? 'var(--primary)' : 'var(--surface-high)', 
+                          padding: '12px 16px', 
+                          borderRadius: '16px', 
+                          borderBottomRightRadius: msg.self ? '4px' : '16px',
+                          borderBottomLeftRadius: !msg.self ? '4px' : '16px',
+                          color: msg.self ? '#fff' : 'var(--on-surface)',
+                          fontSize: '15px',
+                          lineHeight: 1.5,
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                        }}>
+                          {msg.content}
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              )}
+            </div>
+
+            <div style={{ padding: '20px 24px', borderTop: '1px solid rgba(67, 70, 83, 0.3)' }}>
+              <form onSubmit={handleSend} style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+                <div style={{ 
+                  flex: 1, 
+                  background: 'var(--surface-high)', 
+                  border: '1px solid var(--outline-variant)', 
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '8px 16px',
+                  transition: 'border-color 0.2s'
+                }}>
+                  <button type="button" className="icon-btn" style={{ marginRight: '8px' }} onClick={() => setToastMsg("Attachment dialog opened")}><FiPaperclip size={20} /></button>
+                  <input 
+                    type="text" 
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    placeholder={`Message #${activeChannel?.name || "channel"}...`}
+                    style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--on-surface)', fontSize: '15px', padding: '8px 0', outline: 'none' }} 
+                  />
+                  <button type="button" className="icon-btn" style={{ marginLeft: '8px' }} onClick={() => setToastMsg("Emoji picker opened")}><FiSmile size={20} /></button>
+                </div>
+                <motion.button 
+                  type="submit" 
+                  className="btn-primary" 
+                  whileTap={{ scale: 0.95 }}
+                  style={{ height: '46px', width: '46px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '12px', flexShrink: 0 }}
+                  disabled={!inputText.trim()}
+                >
+                  <FiSend size={18} style={{ marginLeft: '-2px', marginTop: '2px' }} />
+                </motion.button>
+              </form>
+            </div>
+
+          </div>
         </div>
-
-        {/* Right Detail Pane */}
-        <aside className="chat-details-panel">
-          <div className="details-header-row">
-            <h3 className="panel-title">Channel Details</h3>
-            <button className="icon-btn"><span className="material-symbols-outlined">close</span></button>
-          </div>
-
-          <div className="channel-display-banner">
-            <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=400&q=80" alt="Channel Cover" className="banner-img" />
-            <div className="banner-cover-overlay"></div>
-            <div className="banner-title-block">
-              <div className="banner-symbol-box">D</div>
-              <span className="banner-channel-name"># design-sync</span>
-            </div>
-          </div>
-
-          {/* Section: Pinned messages */}
-          <div className="details-panel-section">
-            <div className="section-label-header">
-              <span className="section-label-title"><span className="material-symbols-outlined font-md">push_pin</span> Pinned Messages</span>
-              <span className="pinned-count-badge">3</span>
-            </div>
-            <div className="pinned-message-card glass-card">
-              <p className="pinned-message-txt">"Q3 Design System update is live in Figma. Please review the new token architecture by Friday..."</p>
-              <span className="pinned-meta-txt">Pinned by Sarah • Aug 24</span>
-            </div>
-          </div>
-
-          {/* Section: Shared Files */}
-          <div className="details-panel-section">
-            <div className="section-label-header">
-              <span className="section-label-title"><span className="material-symbols-outlined font-md">folder</span> Shared Files</span>
-              <span className="view-all-link pointer hover-text-primary">View all</span>
-            </div>
-            <div className="shared-files-list">
-              {/* File 1 */}
-              <div className="shared-file-item">
-                <div className="shared-file-icon-wrapper text-blue">
-                  <span className="material-symbols-outlined">image</span>
-                </div>
-                <div className="shared-file-details">
-                  <p className="shared-file-name truncate">hero_section_v1.png</p>
-                  <p className="shared-file-size">Alex • 2.1 MB</p>
-                </div>
-              </div>
-              {/* File 2 */}
-              <div className="shared-file-item">
-                <div className="shared-file-icon-wrapper text-secondary">
-                  <span className="material-symbols-outlined">description</span>
-                </div>
-                <div className="shared-file-details">
-                  <p className="shared-file-name truncate">product_requirements.pdf</p>
-                  <p className="shared-file-size">Marcus • 1.2 MB</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Section: Members list */}
-          <div className="details-panel-section">
-            <div className="section-label-header">
-              <span className="section-label-title"><span className="material-symbols-outlined font-md">group</span> Members</span>
-              <span className="members-online-count">24 Online</span>
-            </div>
-            <div className="panel-members-list custom-scrollbar">
-              <div className="panel-member-item">
-                <div className="member-avatar-wrapper">
-                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&q=80" alt="Alex" className="member-avatar-mini" />
-                  <span className="member-status-dot active"></span>
-                </div>
-                <span className="member-name-lbl">Alex Rivera (You)</span>
-              </div>
-              <div className="panel-member-item">
-                <div className="member-avatar-wrapper">
-                  <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=60&q=80" alt="Marcus" className="member-avatar-mini" />
-                  <span className="member-status-dot active"></span>
-                </div>
-                <span className="member-name-lbl">Marcus Chen</span>
-              </div>
-              <div className="panel-member-item">
-                <div className="member-avatar-wrapper">
-                  <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=60&q=80" alt="Sarah" className="member-avatar-mini" />
-                  <span className="member-status-dot active"></span>
-                </div>
-                <span className="member-name-lbl">Sarah Jenkins</span>
-              </div>
-              <div className="panel-member-item">
-                <div className="member-avatar-wrapper">
-                  <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=60&q=80" alt="Jordan" className="member-avatar-mini opacity-60" />
-                  <span className="member-status-dot away"></span>
-                </div>
-                <span className="member-name-lbl text-outline">Jordan Smith</span>
-              </div>
-            </div>
-          </div>
-
-          <button className="leave-channel-btn">
-            <span className="material-symbols-outlined">exit_to_app</span>
-            <span>Leave Channel</span>
-          </button>
-        </aside>
       </div>
+
+      {/* Add Channel Modal */}
+      <Modal isOpen={isAddChannelOpen} onClose={() => setAddChannelOpen(false)} title="Create a Channel">
+        <form onSubmit={handleAddChannel} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <p style={{ margin: 0, fontSize: '14px', color: 'var(--on-surface-variant)' }}>Channels are where your team communicates. They're best when organized around a topic — #marketing, for example.</p>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--on-surface-variant)' }}>Name</label>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <FiHash size={16} color="var(--outline)" style={{ position: 'absolute', left: '16px' }} />
+              <input 
+                type="text" 
+                required
+                placeholder="e.g. bug-reports"
+                value={newChannelName}
+                onChange={(e) => setNewChannelName(e.target.value)}
+                className="form-input" 
+                style={{ width: '100%', padding: '12px 16px 12px 40px', background: 'var(--surface-high)', border: '1px solid var(--outline-variant)', borderRadius: '8px', color: 'var(--on-surface)', outline: 'none' }} 
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+            <button type="button" className="btn-secondary" onClick={() => setAddChannelOpen(false)}>Cancel</button>
+            <button type="submit" className="btn-primary">Create</button>
+          </div>
+        </form>
+      </Modal>
+
+      <Toast message={toastMsg} onClose={() => setToastMsg("")} />
     </div>
   );
 }

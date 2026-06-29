@@ -1,21 +1,40 @@
 import React, { useState } from "react";
 import "../styles/global.css";
 import "../styles/login.css";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import { login } from "../api/authApi";
+import loginBg from "../assets/login-bg.png";
 
 function Login() {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    console.log("Login Called");
     // Simply navigate to dashboard for mock login
-    navigate("/dashboard");
+    // navigate("/dashboard");
+    const response = await login({
+      username,
+      password
+    })
+    console.log(response);
+    if (response.status == 200) {
+      navigate("/dashboard")
+    }
   };
 
   return (
-    <div className="login-page">
+    <div 
+      className="login-page" 
+      style={{
+        backgroundImage: `linear-gradient(rgba(10, 10, 18, 0.4), rgba(10, 10, 18, 0.6)), url(${loginBg})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat"
+      }}
+    >
       {/* Background glow effects */}
       <div className="ambient-glow bg-blue"></div>
       <div className="ambient-glow bg-green"></div>
@@ -24,9 +43,9 @@ function Login() {
         {/* Logo and Brand Header */}
         <div className="login-header">
           <svg className="login-logo animate-glow" width="64" height="64" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M40 60C40 48.9543 48.9543 40 60 40H140C151.046 40 160 48.9543 160 60V140C160 151.046 151.046 160 140 160H60C48.9543 160 40 151.046 40 140V60Z" fill="#5B8CFF" fillOpacity="0.15"/>
-            <path d="M70 70L100 100L70 130" stroke="#5B8CFF" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M110 70L140 100L110 130" stroke="#5B8CFF" strokeWidth="14" strokeOpacity="0.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M40 60C40 48.9543 48.9543 40 60 40H140C151.046 40 160 48.9543 160 60V140C160 151.046 151.046 160 140 160H60C48.9543 160 40 151.046 40 140V60Z" fill="#5B8CFF" fillOpacity="0.15" />
+            <path d="M70 70L100 100L70 130" stroke="#5B8CFF" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M110 70L140 100L110 130" stroke="#5B8CFF" strokeWidth="14" strokeOpacity="0.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <h1 className="login-brand-title">FlowSync</h1>
           <p className="login-brand-subtitle">Productivity Workspace</p>
@@ -72,14 +91,14 @@ function Login() {
             <a href="#" className="forgot-link">Forgot password?</a>
           </div>
 
-          <button type="submit" className="login-submit-btn glow-primary">
+          <button type="submit" className="login-submit-btn glow-primary" >
             Sign In
           </button>
         </form>
 
         <div className="login-footer">
           <span>Don't have an account?</span>
-          <a href="#" className="signup-link">Request Access</a>
+          <Link to="/register" className="signup-link">Register</Link>
         </div>
       </div>
     </div>
