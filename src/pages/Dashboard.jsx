@@ -6,13 +6,13 @@ import "../styles/global.css";
 import "../styles/dashboard.css";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { 
-  FiSearch, 
-  FiBell, 
-  FiPlus, 
-  FiCheckCircle, 
-  FiFolder, 
-  FiUsers, 
+import {
+  FiSearch,
+  FiBell,
+  FiPlus,
+  FiCheckCircle,
+  FiFolder,
+  FiUsers,
   FiZap,
   FiTrendingUp,
   FiClock,
@@ -33,10 +33,11 @@ const itemVariants = {
 
 function Dashboard() {
   const navigate = useNavigate();
-  
+
   const [toastMsg, setToastMsg] = useState("");
   const [isQuickActionsOpen, setQuickActionsOpen] = useState(false);
   const [isNotificationsOpen, setNotificationsOpen] = useState(false);
+  const user = JSON.parse(localStorage.getItem("user"))
 
   return (
     <div className="app-layout">
@@ -62,7 +63,7 @@ function Dashboard() {
             {/* Notifications Dropdown */}
             <AnimatePresence>
               {isNotificationsOpen && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -88,7 +89,7 @@ function Dashboard() {
         </header>
 
         <div className="dashboard-scroll-area custom-scrollbar">
-          <motion.div 
+          <motion.div
             className="dashboard-canvas"
             variants={containerVariants}
             initial="hidden"
@@ -98,17 +99,17 @@ function Dashboard() {
             {/* Hero Section */}
             <motion.section variants={itemVariants} className="dashboard-hero" style={{ gridTemplateColumns: '1fr', display: 'flex', justifyContent: 'space-between' }}>
               <div className="welcome-text">
-                <h2 className="welcome-headline" style={{ fontSize: '36px' }}>Welcome back, Alex.</h2>
+                <h2 className="welcome-headline" style={{ fontSize: '36px' }}>Welcome back, {user.name}.</h2>
                 <p className="welcome-desc" style={{ fontSize: '16px', opacity: 0.8, marginTop: '8px' }}>
-                  You've completed <span className="highlight-text font-bold" style={{ color: 'var(--primary)' }}>85%</span> of your weekly goals. 
+                  You've completed <span className="highlight-text font-bold" style={{ color: 'var(--primary)' }}>85%</span> of your weekly goals.
                   Your team is waiting for review on 3 pending items.
                 </p>
               </div>
-              
+
               <div className="active-sprint-card glass-card" style={{ width: '320px', padding: '20px', cursor: 'pointer' }} onClick={() => navigate("/tasks")}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%' }}>
                   <div style={{ position: 'relative', width: '56px', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(91, 140, 255, 0.1)', borderRadius: '50%' }}>
-                     <FiTrendingUp size={24} color="var(--primary)" />
+                    <FiTrendingUp size={24} color="var(--primary)" />
                   </div>
                   <div style={{ flex: 1 }}>
                     <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--primary)', fontWeight: 600, letterSpacing: '1px' }}>Active Sprint</span>
@@ -123,10 +124,10 @@ function Dashboard() {
             <motion.section variants={itemVariants} className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px', marginTop: '10px' }}>
               <div className="stat-card glass-card" style={{ padding: '24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                   <span style={{ fontSize: '15px', color: 'var(--on-surface-variant)' }}>Tasks Completed</span>
-                   <div style={{ padding: '8px', background: 'rgba(65, 238, 130, 0.1)', borderRadius: '8px', color: 'var(--secondary)' }}>
-                     <FiCheckCircle size={20} />
-                   </div>
+                  <span style={{ fontSize: '15px', color: 'var(--on-surface-variant)' }}>Tasks Completed</span>
+                  <div style={{ padding: '8px', background: 'rgba(65, 238, 130, 0.1)', borderRadius: '8px', color: 'var(--secondary)' }}>
+                    <FiCheckCircle size={20} />
+                  </div>
                 </div>
                 <h3 style={{ fontSize: '36px', fontWeight: 700, margin: '0 0 8px 0' }}>124</h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
@@ -137,10 +138,10 @@ function Dashboard() {
 
               <div className="stat-card glass-card" style={{ padding: '24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                   <span style={{ fontSize: '15px', color: 'var(--on-surface-variant)' }}>Active Projects</span>
-                   <div style={{ padding: '8px', background: 'rgba(91, 140, 255, 0.1)', borderRadius: '8px', color: 'var(--primary)' }}>
-                     <FiFolder size={20} />
-                   </div>
+                  <span style={{ fontSize: '15px', color: 'var(--on-surface-variant)' }}>Active Projects</span>
+                  <div style={{ padding: '8px', background: 'rgba(91, 140, 255, 0.1)', borderRadius: '8px', color: 'var(--primary)' }}>
+                    <FiFolder size={20} />
+                  </div>
                 </div>
                 <h3 style={{ fontSize: '36px', fontWeight: 700, margin: '0 0 8px 0' }}>12</h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
@@ -150,10 +151,10 @@ function Dashboard() {
 
               <div className="stat-card glass-card" style={{ padding: '24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                   <span style={{ fontSize: '15px', color: 'var(--on-surface-variant)' }}>Team Members</span>
-                   <div style={{ padding: '8px', background: 'rgba(255, 184, 116, 0.1)', borderRadius: '8px', color: 'var(--tertiary)' }}>
-                     <FiUsers size={20} />
-                   </div>
+                  <span style={{ fontSize: '15px', color: 'var(--on-surface-variant)' }}>Team Members</span>
+                  <div style={{ padding: '8px', background: 'rgba(255, 184, 116, 0.1)', borderRadius: '8px', color: 'var(--tertiary)' }}>
+                    <FiUsers size={20} />
+                  </div>
                 </div>
                 <h3 style={{ fontSize: '36px', fontWeight: 700, margin: '0 0 8px 0' }}>48</h3>
                 <div className="team-avatars" style={{ display: 'flex', marginLeft: '4px' }}>
@@ -165,10 +166,10 @@ function Dashboard() {
 
               <div className="stat-card glass-card" style={{ padding: '24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                   <span style={{ fontSize: '15px', color: 'var(--on-surface-variant)' }}>Productivity</span>
-                   <div style={{ padding: '8px', background: 'rgba(65, 238, 130, 0.1)', borderRadius: '8px', color: 'var(--secondary)' }}>
-                     <FiZap size={20} />
-                   </div>
+                  <span style={{ fontSize: '15px', color: 'var(--on-surface-variant)' }}>Productivity</span>
+                  <div style={{ padding: '8px', background: 'rgba(65, 238, 130, 0.1)', borderRadius: '8px', color: 'var(--secondary)' }}>
+                    <FiZap size={20} />
+                  </div>
                 </div>
                 <h3 style={{ fontSize: '36px', fontWeight: 700, margin: '0 0 8px 0' }}>94%</h3>
                 <div className="productivity-progress" style={{ height: '6px', background: 'var(--surface-high)', borderRadius: '3px', overflow: 'hidden', marginTop: '12px' }}>
@@ -179,14 +180,14 @@ function Dashboard() {
 
             {/* Main Content Area */}
             <motion.section variants={itemVariants} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', marginTop: '20px' }}>
-              
+
               {/* Recent Activity List */}
               <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h3 style={{ fontSize: '20px', fontWeight: 600 }}>Recent Activity</h3>
                   <button className="btn-secondary" style={{ padding: '6px 12px', fontSize: '13px' }} onClick={() => setToastMsg("Loading activity feed...")}>View All</button>
                 </div>
-                
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
                     <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(91, 140, 255, 0.1)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -233,7 +234,7 @@ function Dashboard() {
                 </div>
               </div>
             </motion.section>
-            
+
           </motion.div>
         </div>
       </div>
@@ -241,9 +242,9 @@ function Dashboard() {
       {/* Quick Actions Modal */}
       <Modal isOpen={isQuickActionsOpen} onClose={() => setQuickActionsOpen(false)} title="Quick Actions">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          <button 
+          <button
             onClick={() => { setQuickActionsOpen(false); navigate("/tasks"); }}
-            className="glass-card" 
+            className="glass-card"
             style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', border: 'none', cursor: 'pointer', color: 'var(--on-surface)' }}
           >
             <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(91,140,255,0.1)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -251,10 +252,10 @@ function Dashboard() {
             </div>
             <span style={{ fontWeight: 600 }}>Create Task</span>
           </button>
-          
-          <button 
+
+          <button
             onClick={() => { setQuickActionsOpen(false); navigate("/team"); }}
-            className="glass-card" 
+            className="glass-card"
             style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', border: 'none', cursor: 'pointer', color: 'var(--on-surface)' }}
           >
             <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(255,184,116,0.1)', color: 'var(--tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -262,10 +263,10 @@ function Dashboard() {
             </div>
             <span style={{ fontWeight: 600 }}>Invite Team</span>
           </button>
-          
-          <button 
+
+          <button
             onClick={() => { setQuickActionsOpen(false); navigate("/chat"); }}
-            className="glass-card" 
+            className="glass-card"
             style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', border: 'none', cursor: 'pointer', color: 'var(--on-surface)' }}
           >
             <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(65,238,130,0.1)', color: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -274,9 +275,9 @@ function Dashboard() {
             <span style={{ fontWeight: 600 }}>New Message</span>
           </button>
 
-          <button 
+          <button
             onClick={() => { setQuickActionsOpen(false); navigate("/settings"); }}
-            className="glass-card" 
+            className="glass-card"
             style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', border: 'none', cursor: 'pointer', color: 'var(--on-surface)' }}
           >
             <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', color: 'var(--outline)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

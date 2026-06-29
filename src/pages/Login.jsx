@@ -21,13 +21,15 @@ function Login() {
     })
     console.log(response);
     if (response.status == 200) {
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+      localStorage.setItem("token", response.data.token);
       navigate("/dashboard")
     }
   };
 
   return (
-    <div 
-      className="login-page" 
+    <div
+      className="login-page"
       style={{
         backgroundImage: `linear-gradient(rgba(10, 10, 18, 0.4), rgba(10, 10, 18, 0.6)), url(${loginBg})`,
         backgroundSize: "cover",
