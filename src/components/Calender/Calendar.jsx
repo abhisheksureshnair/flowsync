@@ -52,6 +52,7 @@ export default function Calendar() {
   // Notification and Toast States
   const [isNotificationsOpen, setNotificationsOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
+  const [toastType, setToastType] = useState("success");
 
   // Modal State
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
@@ -266,6 +267,7 @@ export default function Calendar() {
     e.preventDefault();
     if (!newEvent.title.trim() || !newEvent.date) {
       setToastMsg("Please fill out Title and Date fields.");
+      setToastType("error");
       return;
     }
 
@@ -288,6 +290,7 @@ export default function Calendar() {
     setSelectedDate(new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
     
     setToastMsg(`Successfully scheduled event: "${newEvent.title}"`);
+    setToastType("success");
     setNewEvent({
       title: "",
       description: "",
@@ -314,6 +317,7 @@ export default function Calendar() {
   const handleDeleteEvent = (id, title) => {
     setEvents(prev => prev.filter(evt => evt.id !== id));
     setToastMsg(`Deleted event: "${title}"`);
+    setToastType("info");
   };
 
   // Months labels
@@ -923,7 +927,7 @@ export default function Calendar() {
         </form>
       </Modal>
 
-      <Toast message={toastMsg} onClose={() => setToastMsg("")} />
+      <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg("")} />
     </div>
   );
 }

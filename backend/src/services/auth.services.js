@@ -4,23 +4,22 @@ import { generateToken } from "../utils/jwt.js";
 
 export const loginService = async (username, password) => {
   const user = await User.findOne({ username: username });
-  const token = generateToken(user);
 
   if (!user) {
-    return res.status(404).json({
-      success: false,
-      message: "User not found",
-    });
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
   }
 
   const isPasswordCorrect = await bcrypt.compare(password, user.hashedPassword);
 
   if (!isPasswordCorrect) {
-    return res.status(401).json({
-      success: false,
-      message: "Invalid password",
-    });
+    const error = new Error("Invalid password");
+    error.statusCode = 401;
+    throw error;
   }
+
+  const token = generateToken(user);
 
   return {
     token,
@@ -42,24 +41,21 @@ export const registrationService = async (
   role
 ) => {
   const existingUser = await User.findOne({ username });
-  const hashedPassword = await bcrypt.hash(password, 10);
-
   if (existingUser) {
-    return res.status(400).json({
-      success: false,
-      message: "Username already exists",
-    });
+    const error = new Error("Username already exists");
+    error.statusCode = 400;
+    throw error;
   }
 
   // Check email
   const existingEmail = await User.findOne({ email });
-
   if (existingEmail) {
-    return res.status(400).json({
-      success: false,
-      message: "Email already exists",
-    });
+    const error = new Error("Email already exists");
+    error.statusCode = 400;
+    throw error;
   }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
 
   // Create user
   const newUser = new User({

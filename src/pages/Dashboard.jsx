@@ -35,9 +35,10 @@ function Dashboard() {
   const navigate = useNavigate();
 
   const [toastMsg, setToastMsg] = useState("");
+  const [toastType, setToastType] = useState("success");
   const [isQuickActionsOpen, setQuickActionsOpen] = useState(false);
   const [isNotificationsOpen, setNotificationsOpen] = useState(false);
-  const user = JSON.parse(localStorage.getItem("user"))
+  const user = JSON.parse(localStorage.getItem("user")) || { name: "Guest" };
 
   return (
     <div className="app-layout">
@@ -185,7 +186,7 @@ function Dashboard() {
               <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h3 style={{ fontSize: '20px', fontWeight: 600 }}>Recent Activity</h3>
-                  <button className="btn-secondary" style={{ padding: '6px 12px', fontSize: '13px' }} onClick={() => setToastMsg("Loading activity feed...")}>View All</button>
+                  <button className="btn-secondary" style={{ padding: '6px 12px', fontSize: '13px' }} onClick={() => { setToastMsg("Loading activity feed..."); setToastType("info"); }}>View All</button>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -288,7 +289,7 @@ function Dashboard() {
         </div>
       </Modal>
 
-      <Toast message={toastMsg} onClose={() => setToastMsg("")} />
+      <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg("")} />
     </div>
   );
 }

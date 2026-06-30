@@ -4,6 +4,7 @@ import "../styles/login.css"; // Reuse login styles for consistency
 import { useNavigate, Link } from "react-router-dom";
 import { register } from "../api/authApi";
 import loginBg from "../assets/login-bg.png";
+import Toast from "../components/ui/Toast";
 
 const AVATARS = [
   "https://api.dicebear.com/7.x/notionists/svg?seed=Felix&backgroundColor=e2e8f0",
@@ -24,6 +25,8 @@ function Register() {
     role: "Member",
     profileImage: AVATARS[0]
   });
+  const [toastMsg, setToastMsg] = useState("");
+  const [toastType, setToastType] = useState("success");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -35,24 +38,29 @@ function Register() {
     console.log("Register Called with data:", formData);
 
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match!");
+      setToastMsg("Passwords do not match!");
+      setToastType("error");
       return;
     }
 
-    const response = await register(formData)
-    if (response.status == 400) {
-      alert(response.message);
-    } else if (response.status == 200) {
-      navigate("/");
-    } else {
-      alert("Error");
+    try {
+      const response = await register(formData);
+      if (response.status == 200) {
+        setToastMsg("Registration successful! Redirecting...");
+        setToastType("success");
+        setTimeout(() => {
+          navigate("/");
+        }, 1500);
+      } else {
+        setToastMsg(response.data?.message || response.message || "Registration failed");
+        setToastType("error");
+      }
+    } catch (error) {
+      console.error(error);
+      const errMsg = error.response?.data?.message || error.message || "An error occurred during registration";
+      setToastMsg(errMsg);
+      setToastType("error");
     }
-    // Here you would typically call your register API
-    // const response = await register(formData);
-    // if (response.status === 200) navigate("/login");
-
-    // For now, simply navigate to login to simulate successful registration
-
   };
 
   return (
@@ -175,6 +183,7 @@ function Register() {
           <Link to="/" className="signup-link">Sign In</Link>
         </div>
       </div>
+      <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg("")} />
     </div>
   );
 }

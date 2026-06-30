@@ -86,6 +86,7 @@ function Team() {
   
   const [isInviteModalOpen, setInviteModalOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
+  const [toastType, setToastType] = useState("success");
   
   const [inviteData, setInviteData] = useState({ email: "", role: "Member" });
 
@@ -112,6 +113,7 @@ function Team() {
     setInviteModalOpen(false);
     setInviteData({ email: "", role: "Member" });
     setToastMsg(`Invitation sent to ${inviteData.email}`);
+    setToastType("success");
   };
 
   return (
@@ -125,13 +127,13 @@ function Team() {
             <input type="text" placeholder="Search team members..." />
           </div>
           <div className="header-actions">
-            <button className="btn-secondary" onClick={() => setToastMsg("Quick actions menu")}>Quick Actions</button>
+            <button className="btn-secondary" onClick={() => { setToastMsg("Quick actions menu"); setToastType("info"); }}>Quick Actions</button>
             <button className="btn-primary" onClick={() => setInviteModalOpen(true)}>
               <FiUserPlus size={16} style={{ marginRight: '6px' }} />
               Invite
             </button>
             <div className="header-divider" style={{ width: '1px', height: '24px', background: 'var(--outline-variant)' }}></div>
-            <button className="icon-btn" onClick={() => setToastMsg("No new notifications")}><FiBell size={20} /></button>
+            <button className="icon-btn" onClick={() => { setToastMsg("No new notifications"); setToastType("info"); }}><FiBell size={20} /></button>
           </div>
         </header>
 
@@ -151,7 +153,7 @@ function Team() {
               </div>
 
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <button className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setToastMsg("Filter options")}>
+                <button className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => { setToastMsg("Filter options"); setToastType("info"); }}>
                   <FiFilter size={16} /> Filter
                 </button>
                 <button className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setInviteModalOpen(true)}>
@@ -175,7 +177,7 @@ function Team() {
                     style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
                   >
                     <div style={{ padding: '24px', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-                      <button className="icon-btn" style={{ position: 'absolute', top: '16px', right: '16px' }} onClick={() => setToastMsg(`More options for ${member.name}`)}>
+                      <button className="icon-btn" style={{ position: 'absolute', top: '16px', right: '16px' }} onClick={() => { setToastMsg(`More options for ${member.name}`); setToastType("info"); }}>
                         <FiMoreHorizontal size={20} />
                       </button>
 
@@ -206,7 +208,7 @@ function Team() {
                         <button className="btn-secondary" style={{ padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => navigate('/chat')}>
                           <FiMessageCircle size={16} />
                         </button>
-                        <button className="btn-secondary" style={{ padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setToastMsg(`Email client opened for ${member.name}`)}>
+                        <button className="btn-secondary" style={{ padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { setToastMsg(`Email client opened for ${member.name}`); setToastType("info"); }}>
                           <FiMail size={16} />
                         </button>
                       </div>
@@ -277,7 +279,7 @@ function Team() {
         </form>
       </Modal>
 
-      <Toast message={toastMsg} onClose={() => setToastMsg("")} />
+      <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg("")} />
     </div>
   );
 }

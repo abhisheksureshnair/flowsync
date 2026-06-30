@@ -28,6 +28,13 @@ export default function Sidebar() {
     { title: "Settings", path: "/settings", icon: <FiSettings /> },
   ];
 
+  const localUser = localStorage.getItem("user");
+  const user = localUser ? JSON.parse(localUser) : {
+    name: "Alex Rivera",
+    role: "Product Designer",
+    profileImage: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80"
+  };
+
   return (
     <motion.aside 
       className="sidebar-container"
@@ -199,8 +206,8 @@ export default function Sidebar() {
         >
           <div className="avatar-wrapper" style={{ position: "relative", width: "38px", height: "38px", flexShrink: 0 }}>
             <img 
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80" 
-              alt="Alex Rivera" 
+              src={user.profileImage || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80"} 
+              alt={user.name} 
               style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover", border: "1.5px solid var(--outline-variant, #434653)" }} 
             />
             <span className="status-dot active" style={{ position: "absolute", bottom: 0, right: 0, width: "10px", height: "10px", borderRadius: "50%", border: "2px solid var(--surface-low, #0a0a12)", backgroundColor: "var(--secondary, #00c896)" }}></span>
@@ -215,8 +222,8 @@ export default function Sidebar() {
                 exit={{ opacity: 0, width: 0 }}
                 style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden", whiteSpace: "nowrap" }}
               >
-                <span className="profile-name" style={{ fontSize: "13px", fontWeight: 600, color: "var(--on-surface, #fff)" }}>Alex Rivera</span>
-                <span className="profile-role" style={{ fontSize: "10px", color: "var(--on-surface-variant, #8d909f)" }}>Product Designer</span>
+                <span className="profile-name" style={{ fontSize: "13px", fontWeight: 600, color: "var(--on-surface, #fff)" }}>{user.name}</span>
+                <span className="profile-role" style={{ fontSize: "10px", color: "var(--on-surface-variant, #8d909f)" }}>{user.role}</span>
               </motion.div>
             )}
           </AnimatePresence>

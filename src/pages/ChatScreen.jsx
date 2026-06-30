@@ -70,6 +70,7 @@ function ChatScreen() {
   const [isAddChannelOpen, setAddChannelOpen] = useState(false);
   const [newChannelName, setNewChannelName] = useState("");
   const [toastMsg, setToastMsg] = useState("");
+  const [toastType, setToastType] = useState("success");
 
   const chatContainerRef = useRef(null);
 
@@ -115,6 +116,7 @@ function ChatScreen() {
     setAddChannelOpen(false);
     setNewChannelName("");
     setToastMsg(`Channel #${formattedName} created!`);
+    setToastType("success");
   };
 
   const selectChannel = (id) => {
@@ -135,7 +137,7 @@ function ChatScreen() {
             <input type="text" placeholder="Search messages, files..." />
           </div>
           <div className="header-actions">
-            <button className="icon-btn" onClick={() => setToastMsg("No new notifications")}><FiBell size={20} /></button>
+            <button className="icon-btn" onClick={() => { setToastMsg("No new notifications"); setToastType("info"); }}><FiBell size={20} /></button>
           </div>
         </header>
 
@@ -187,7 +189,7 @@ function ChatScreen() {
               <h4 style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--outline)', margin: '24px 8px 8px 8px', fontWeight: 600 }}>Direct Messages</h4>
               
               <button 
-                onClick={() => setToastMsg("Direct messages feature coming soon")}
+                onClick={() => { setToastMsg("Direct messages feature coming soon"); setToastType("info"); }}
                 style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--on-surface-variant)' }}
               >
                 <div style={{ position: 'relative' }}>
@@ -215,7 +217,7 @@ function ChatScreen() {
                   <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&q=80" alt="Alex" style={{ width: '32px', height: '32px', borderRadius: '50%', border: '2px solid var(--surface)', marginLeft: '-8px' }} />
                   <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=60&q=80" alt="Sarah" style={{ width: '32px', height: '32px', borderRadius: '50%', border: '2px solid var(--surface)', marginLeft: '-8px' }} />
                 </div>
-                <button className="icon-btn" onClick={() => setToastMsg("Channel settings")}><FiMoreVertical size={20} /></button>
+                <button className="icon-btn" onClick={() => { setToastMsg("Channel settings"); setToastType("info"); }}><FiMoreVertical size={20} /></button>
               </div>
             </div>
 
@@ -284,7 +286,7 @@ function ChatScreen() {
                   padding: '8px 16px',
                   transition: 'border-color 0.2s'
                 }}>
-                  <button type="button" className="icon-btn" style={{ marginRight: '8px' }} onClick={() => setToastMsg("Attachment dialog opened")}><FiPaperclip size={20} /></button>
+                  <button type="button" className="icon-btn" style={{ marginRight: '8px' }} onClick={() => { setToastMsg("Attachment dialog opened"); setToastType("info"); }}><FiPaperclip size={20} /></button>
                   <input 
                     type="text" 
                     value={inputText}
@@ -292,7 +294,7 @@ function ChatScreen() {
                     placeholder={`Message #${activeChannel?.name || "channel"}...`}
                     style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--on-surface)', fontSize: '15px', padding: '8px 0', outline: 'none' }} 
                   />
-                  <button type="button" className="icon-btn" style={{ marginLeft: '8px' }} onClick={() => setToastMsg("Emoji picker opened")}><FiSmile size={20} /></button>
+                  <button type="button" className="icon-btn" style={{ marginLeft: '8px' }} onClick={() => { setToastMsg("Emoji picker opened"); setToastType("info"); }}><FiSmile size={20} /></button>
                 </div>
                 <motion.button 
                   type="submit" 
@@ -338,7 +340,7 @@ function ChatScreen() {
         </form>
       </Modal>
 
-      <Toast message={toastMsg} onClose={() => setToastMsg("")} />
+      <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg("")} />
     </div>
   );
 }

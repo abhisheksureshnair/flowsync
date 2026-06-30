@@ -4,26 +4,39 @@ import "../styles/login.css";
 import { useNavigate, Link } from "react-router-dom";
 import { login } from "../api/authApi";
 import loginBg from "../assets/login-bg.png";
+import Toast from "../components/ui/Toast";
 
 function Login() {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [toastMsg, setToastMsg] = useState("");
+  const [toastType, setToastType] = useState("success");
 
   const handleLogin = async (e) => {
     e.preventDefault();
     console.log("Login Called");
     // Simply navigate to dashboard for mock login
     // navigate("/dashboard");
-    const response = await login({
-      username,
-      password
-    })
-    console.log(response);
-    if (response.status == 200) {
-      localStorage.setItem("user", JSON.stringify(response.data.user));
-      localStorage.setItem("token", response.data.token);
-      navigate("/dashboard")
+    try {
+      const response = await login({
+        username,
+        password
+      });
+      console.log(response);
+      if (response.status == 200) {
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+        localStorage.setItem("token", response.data.token);
+        navigate("/dashboard");
+      } else {
+        setToastMsg(response.data?.message || "Login failed");
+        setToastType("error");
+      }
+    } catch (error) {
+      console.error(error);
+      const errMsg = error.response?.data?.message || error.message || "An error occurred during login";
+      setToastMsg(errMsg);
+      setToastType("error");
     }
   };
 
@@ -103,6 +116,7 @@ function Login() {
           <Link to="/register" className="signup-link">Register</Link>
         </div>
       </div>
+      <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg("")} />
     </div>
   );
 }

@@ -14,11 +14,14 @@ import {
   FiMessageSquare,
   FiMoreHorizontal,
   FiFilter,
-  FiPaperclip
+  FiPaperclip,
+  FiUsers,
+  FiSettings
 } from "react-icons/fi";
 import { allUser } from "../api/userApi";
-import { addNewTask as addNewTaskApi } from "../api/taskApi";
-import { all } from "axios";
+import { addNewTask as addNewTaskApi, allTask, getUserAddedTask, getUserTask } from "../api/taskApi";
+import noTasksImg from "../assets/no-tasks.png";
+
 
 const MEMBERS = [
   {
@@ -132,31 +135,16 @@ const formatDate = (dateStr) => {
 function Tasks() {
   const navigate = useNavigate();
   const [tasks, setTasks] = useState(INITIAL_TASKS);
+  const [userAddedTasks, setUserAddedTasks] = useState([]);
+  const [userTasks, setUserTasks] = useState([]);
   const [activeTab, setActiveTab] = useState("All Tasks");
   const [users, setUsers] = useState([]);
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await allUser();
-        console.log("*******************", response);
-        if (response && response.status === 200) {
-          const data = response.data.users;
-          setUsers(data);
-          if (data && data.length > 0) {
-            setNewTask(prev => ({ ...prev, assignedTo: data[0]._id }));
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching users:", error);
-      }
-    };
-    fetchUsers();
-  }, []);
-  // Interactivity States
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [isNotificationsOpen, setNotificationsOpen] = useState(false);
+  const [isQuickActionsOpen, setQuickActionsOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
+  const [toastType, setToastType] = useState("success");
 
   // Create Task Form State
   const [newTask, setNewTask] = useState({
@@ -169,14 +157,156 @@ function Tasks() {
     project: PROJECTS[0]
   });
 
+  useEffect(() => {
+    const fetchAllTasks = async (currentUsers) => {
+      try {
+        const response = await allTask();
+        if (response && response.status === 200) {
+          const dbTasks = response.data.data || [];
+          const mappedTasks = dbTasks.map(dbTask => {
+            const assignedUser = currentUsers.find(u => u._id === dbTask.assignedTo);
+            return {
+              id: dbTask._id,
+              title: dbTask.title,
+              desc: dbTask.description,
+              priority: dbTask.priority,
+              status: dbTask.status === "Todo" ? "To Do" : dbTask.status === "In Progress" ? "In Process" : dbTask.status,
+              date: dbTask.dueDate || "Today",
+              comments: 0,
+              attachments: 0,
+              project: dbTask.project,
+              assignee: assignedUser ? {
+                id: assignedUser._id,
+                name: assignedUser.name || assignedUser.username,
+                avatar: assignedUser.profileImage || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&q=80"
+              } : MEMBERS[0]
+            };
+          });
+          setTasks(mappedTasks);
+        }
+      } catch (error) {
+        console.error("Error fetching all tasks:", error);
+      }
+    };
+
+    const fetchUserTask = async (currentUsers) => {
+      try {
+        const response = await getUserTask();
+        if (response && response.status === 200) {
+          const dbTasks = response.data.data || [];
+          const mappedTasks = dbTasks.map(dbTask => {
+            const assignedUser = currentUsers.find(u => u._id === dbTask.assignedTo);
+            return {
+              id: dbTask._id,
+              title: dbTask.title,
+              desc: dbTask.description,
+              priority: dbTask.priority,
+              status: dbTask.status === "Todo" ? "To Do" : dbTask.status === "In Progress" ? "In Process" : dbTask.status,
+              date: dbTask.dueDate || "Today",
+              comments: 0,
+              attachments: 0,
+              project: dbTask.project,
+              assignee: assignedUser ? {
+                id: assignedUser._id,
+                name: assignedUser.name || assignedUser.username,
+                avatar: assignedUser.profileImage || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&q=80"
+              } : MEMBERS[0]
+            };
+          });
+          setUserTasks(mappedTasks);
+          setTasks(prev => {
+            const existingIds = new Set(prev.map(t => t.id));
+            const newTasks = mappedTasks.filter(t => !existingIds.has(t.id));
+            return [...newTasks, ...prev];
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching user tasks:", error);
+      }
+    };
+
+    const fetchUseraddedTask = async (currentUsers) => {
+      try {
+        const useraddedTask = await getUserAddedTask();
+        if (useraddedTask && useraddedTask.status === 200) {
+          const dbTasks = useraddedTask.data.data || [];
+          const mappedTasks = dbTasks.map(dbTask => {
+            const assignedUser = currentUsers.find(u => u._id === dbTask.assignedTo);
+            return {
+              id: dbTask._id,
+              title: dbTask.title,
+              desc: dbTask.description,
+              priority: dbTask.priority,
+              status: dbTask.status === "Todo" ? "To Do" : dbTask.status === "In Progress" ? "In Process" : dbTask.status,
+              date: dbTask.dueDate || "Today",
+              comments: 0,
+              attachments: 0,
+              project: dbTask.project,
+              assignee: assignedUser ? {
+                id: assignedUser._id,
+                name: assignedUser.name || assignedUser.username,
+                avatar: assignedUser.profileImage || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&q=80"
+              } : MEMBERS[0]
+            };
+          });
+          setUserAddedTasks(mappedTasks);
+          setTasks(prev => {
+            const existingIds = new Set(prev.map(t => t.id));
+            const newTasks = mappedTasks.filter(t => !existingIds.has(t.id));
+            return [...newTasks, ...prev];
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching user added tasks:", error);
+        setToastMsg("Error fetching tasks from server");
+        setToastType("error");
+      }
+    };
+
+    const fetchUsers = async () => {
+      try {
+        const response = await allUser();
+        if (response && response.status === 200) {
+          const data = response.data.users;
+          setUsers(data);
+          if (data && data.length > 0) {
+            setNewTask(prev => ({ ...prev, assignedTo: data[0]._id }));
+          }
+          return data;
+        }
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        setToastMsg("Error fetching users from server");
+        setToastType("error");
+      }
+      return [];
+    };
+
+    const loadData = async () => {
+      const loadedUsers = await fetchUsers();
+      await fetchAllTasks(loadedUsers);
+      await fetchUseraddedTask(loadedUsers);
+      await fetchUserTask(loadedUsers);
+    };
+
+    loadData();
+  }, []);
+
   const filteredTasks = activeTab === "All Tasks"
     ? tasks
-    : tasks.filter(t => t.status === activeTab);
+    : activeTab === "Assigned By Me"
+      ? userAddedTasks
+      : activeTab === "Assigned For Me"
+        ? userTasks
+        : tasks.filter(t => t.status === activeTab);
 
   const markComplete = (id) => {
     setTasks(tasks.map(t => t.id === id ? { ...t, status: "Completed", date: "Done" } : t));
+    setUserAddedTasks(userAddedTasks.map(t => t.id === id ? { ...t, status: "Completed", date: "Done" } : t));
+    setUserTasks(userTasks.map(t => t.id === id ? { ...t, status: "Completed", date: "Done" } : t));
     setSelectedTask(null);
     setToastMsg("Task marked as completed!");
+    setToastType("success");
   };
 
   const addNewTask = async (e) => {
@@ -203,7 +333,7 @@ function Tasks() {
           title: dbTask.title,
           desc: dbTask.description,
           priority: dbTask.priority,
-          status: dbTask.status,
+          status: dbTask.status === "Todo" ? "To Do" : dbTask.status === "In Progress" ? "In Process" : dbTask.status,
           date: dbTask.dueDate || "Today",
           comments: 0,
           attachments: 0,
@@ -216,6 +346,11 @@ function Tasks() {
         };
 
         setTasks([taskObj, ...tasks]);
+        setUserAddedTasks([taskObj, ...userAddedTasks]);
+        const currentUser = JSON.parse(localStorage.getItem("user"));
+        if (currentUser && dbTask.assignedTo === currentUser._id) {
+          setUserTasks([taskObj, ...userTasks]);
+        }
         setCreateModalOpen(false);
         setNewTask({
           title: "",
@@ -227,17 +362,22 @@ function Tasks() {
           project: PROJECTS[0]
         });
         setToastMsg("Task created successfully!");
+        setToastType("success");
       } else {
         setToastMsg(response.data?.message || "Failed to create task");
+        setToastType("error");
       }
     } catch (error) {
       if (error.response && error.response.status === 406) {
         setToastMsg("Date is assigned already");
+        setToastType("error");
       } else {
         setToastMsg(error.response?.data?.message || error.message || "Failed to create task");
+        setToastType("error");
       }
     }
   };
+
 
   return (
     <div className="app-layout">
@@ -250,7 +390,7 @@ function Tasks() {
             <input type="text" placeholder="Search tasks, docs, or people..." />
           </div>
           <div className="header-actions" style={{ position: 'relative' }}>
-            <button className="btn-secondary" onClick={() => setToastMsg("Quick actions opened!")}>Quick Actions</button>
+            <button className="btn-secondary" onClick={() => setQuickActionsOpen(true)}>Quick Actions</button>
             <button className="btn-primary" onClick={() => setCreateModalOpen(true)}>
               <FiPlus size={16} style={{ marginRight: '6px' }} />
               Create Task
@@ -294,7 +434,7 @@ function Tasks() {
               </div>
 
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <button className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setToastMsg("Filter menu opened")}>
+                <button className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => { setToastMsg("Filter menu opened"); setToastType("info"); }}>
                   <FiFilter size={16} /> Filter
                 </button>
               </div>
@@ -302,7 +442,7 @@ function Tasks() {
 
             {/* Tabs */}
             <motion.div variants={itemVariants} style={{ display: 'flex', gap: '8px', borderBottom: '1px solid rgba(67, 70, 83, 0.3)', paddingBottom: '16px' }}>
-              {["All Tasks", "To Do", "In Process", "Completed"].map(tab => (
+              {["All Tasks", "To Do", "In Process", "Completed", "Assigned By Me", "Assigned For Me"].map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -325,88 +465,163 @@ function Tasks() {
             {/* Tasks List */}
             <motion.div variants={itemVariants} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <AnimatePresence mode="popLayout">
-                {filteredTasks.map((task) => (
+                {filteredTasks.length === 0 ? (
                   <motion.div
-                    key={task.id}
-                    layout
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
                     className="glass-card"
-                    onClick={() => setSelectedTask(task)}
                     style={{
-                      padding: '20px 24px',
+                      padding: '40px',
                       display: 'flex',
+                      flexDirection: 'column',
                       alignItems: 'center',
-                      justifyContent: 'space-between',
-                      cursor: 'pointer',
-                      borderLeft: task.status === 'Completed' ? '4px solid var(--secondary)' :
-                        task.status === 'In Process' ? '4px solid var(--primary)' :
-                          '4px solid transparent'
+                      justifyContent: 'center',
+                      textAlign: 'center',
+                      gap: '24px',
+                      minHeight: '400px',
+                      border: '1px solid rgba(255, 255, 255, 0.05)'
                     }}
-                    whileHover={{ y: -2, boxShadow: '0 8px 16px rgba(0,0,0,0.2)' }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px', flex: 1 }}>
-                      <div style={{ marginTop: '4px', color: task.status === 'Completed' ? 'var(--secondary)' : 'var(--outline)' }}>
-                        <FiCheckCircle size={24} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                          <h4 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--on-surface)', textDecoration: task.status === 'Completed' ? 'line-through' : 'none' }}>{task.title}</h4>
-                          <span style={{
-                            fontSize: '11px',
-                            padding: '2px 8px',
-                            borderRadius: '12px',
-                            fontWeight: 600,
-                            background: task.priority === 'High' ? 'rgba(255, 180, 171, 0.15)' :
-                              task.priority === 'Medium' ? 'rgba(255, 184, 116, 0.15)' :
-                                'rgba(141, 144, 159, 0.15)',
-                            color: task.priority === 'High' ? 'var(--error)' :
-                              task.priority === 'Medium' ? 'var(--tertiary)' :
-                                'var(--on-surface-variant)'
-                          }}>
-                            {task.priority}
-                          </span>
-                          {task.project && (
+                    <img 
+                      src={noTasksImg} 
+                      alt="No tasks found" 
+                      style={{ 
+                        width: '280px', 
+                        height: '280px', 
+                        borderRadius: '24px', 
+                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        objectFit: 'cover'
+                      }} 
+                    />
+                    <div>
+                      <h3 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--on-surface)', marginBottom: '8px' }}>
+                        No Tasks Found
+                      </h3>
+                      <p style={{ fontSize: '15px', color: 'var(--on-surface-variant)', margin: 0, maxWidth: '400px', lineHeight: '1.5' }}>
+                        {activeTab === "Assigned By Me" 
+                          ? "You haven't created any tasks yet." 
+                          : activeTab === "Assigned For Me" 
+                            ? "You don't have any tasks assigned to you right now." 
+                            : `There are currently no tasks in "${activeTab}".`}
+                      </p>
+                    </div>
+                    {activeTab !== "Completed" && (
+                      <button className="btn-primary" onClick={() => setCreateModalOpen(true)}>
+                        <FiPlus size={16} style={{ marginRight: '6px' }} />
+                        Create New Task
+                      </button>
+                    )}
+                  </motion.div>
+                ) : (
+                  filteredTasks.map((task) => (
+                    <motion.div
+                      key={task.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.2 }}
+                      className="glass-card"
+                      onClick={() => setSelectedTask(task)}
+                      style={{
+                        padding: '20px 24px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        borderLeft: task.status === 'Completed' ? '4px solid var(--secondary)' :
+                          task.status === 'In Process' ? '4px solid var(--primary)' :
+                            '4px solid transparent'
+                      }}
+                      whileHover={{ y: -2, boxShadow: '0 8px 16px rgba(0,0,0,0.2)' }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px', flex: 1 }}>
+                        <div style={{ marginTop: '4px', color: task.status === 'Completed' ? 'var(--secondary)' : 'var(--outline)' }}>
+                          <FiCheckCircle size={24} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                            <h4 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--on-surface)', textDecoration: task.status === 'Completed' ? 'line-through' : 'none' }}>{task.title}</h4>
                             <span style={{
                               fontSize: '11px',
                               padding: '2px 8px',
                               borderRadius: '12px',
                               fontWeight: 600,
-                              background: 'rgba(91, 140, 255, 0.15)',
-                              color: 'var(--primary)'
+                              background: task.priority === 'High' ? 'rgba(255, 180, 171, 0.15)' :
+                                task.priority === 'Medium' ? 'rgba(255, 184, 116, 0.15)' :
+                                  'rgba(141, 144, 159, 0.15)',
+                              color: task.priority === 'High' ? 'var(--error)' :
+                                task.priority === 'Medium' ? 'var(--tertiary)' :
+                                  'var(--on-surface-variant)'
                             }}>
-                              {task.project}
+                              {task.priority}
                             </span>
+                            {task.project && (
+                              <span style={{
+                                fontSize: '11px',
+                                padding: '2px 8px',
+                                borderRadius: '12px',
+                                fontWeight: 600,
+                                background: 'rgba(91, 140, 255, 0.15)',
+                                color: 'var(--primary)'
+                              }}>
+                                {task.project}
+                              </span>
+                            )}
+                            {(activeTab === "All Tasks" || activeTab === "Assigned By Me" || activeTab === "Assigned For Me") && (
+                              <span style={{
+                                fontSize: '11px',
+                                padding: '2px 8px',
+                                borderRadius: '12px',
+                                fontWeight: 600,
+                                background: task.status === 'Completed' ? 'rgba(65, 238, 130, 0.15)' :
+                                  task.status === 'In Process' ? 'rgba(91, 140, 255, 0.15)' :
+                                    'rgba(255, 255, 255, 0.1)',
+                                color: task.status === 'Completed' ? 'var(--secondary)' :
+                                  task.status === 'In Process' ? 'var(--primary)' :
+                                    'var(--on-surface-variant)'
+                              }}>
+                                {task.status}
+                              </span>
+                            )}
+                          </div>
+                          <p style={{ margin: 0, fontSize: '14px', color: 'var(--on-surface-variant)', lineHeight: 1.5, maxWidth: '800px' }}>{task.desc}</p>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
+                        <div style={{ display: 'flex', gap: '16px', color: 'var(--outline)' }}>
+                          {task.comments > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+                              <FiMessageSquare size={16} /> {task.comments}
+                            </div>
+                          )}
+                          {task.attachments > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+                              <FiPaperclip size={16} /> {task.attachments}
+                            </div>
                           )}
                         </div>
-                        <p style={{ margin: 0, fontSize: '14px', color: 'var(--on-surface-variant)', lineHeight: 1.5, maxWidth: '800px' }}>{task.desc}</p>
-                      </div>
-                    </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
-                      <div style={{ display: 'flex', gap: '16px', color: 'var(--outline)' }}>
-                        {task.comments > 0 && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
-                            <FiMessageSquare size={16} /> {task.comments}
-                          </div>
-                        )}
-                        {task.attachments > 0 && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
-                            <FiPaperclip size={16} /> {task.attachments}
-                          </div>
-                        )}
-                      </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--on-surface-variant)', fontSize: '13px' }}>
+                          <FiClock size={16} /> {formatDate(task.date)}
+                        </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--on-surface-variant)', fontSize: '13px' }}>
-                        <FiClock size={16} /> {formatDate(task.date)}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <img src={task.assignee?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&q=80"} alt={task.assignee?.name || "Assignee"} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
+                          {(activeTab === "Assigned By Me" || activeTab === "Assigned For Me") && (
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span style={{ fontSize: '11px', color: 'var(--on-surface-variant)' }}>Assigned to</span>
+                              <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--on-surface)' }}>{task.assignee?.name || "Unassigned"}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-
-                      <img src={task.assignee?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&q=80"} alt={task.assignee?.name || "Assignee"} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  ))
+                )}
               </AnimatePresence>
             </motion.div>
           </motion.div>
@@ -571,8 +786,57 @@ function Tasks() {
         )}
       </Modal>
 
+      {/* Quick Actions Modal */}
+      <Modal isOpen={isQuickActionsOpen} onClose={() => setQuickActionsOpen(false)} title="Quick Actions">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <button
+            onClick={() => { setQuickActionsOpen(false); setCreateModalOpen(true); }}
+            className="glass-card"
+            style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', border: 'none', cursor: 'pointer', color: 'var(--on-surface)' }}
+          >
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(91,140,255,0.1)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FiCheckCircle size={24} />
+            </div>
+            <span style={{ fontWeight: 600 }}>Create Task</span>
+          </button>
+
+          <button
+            onClick={() => { setQuickActionsOpen(false); navigate("/team"); }}
+            className="glass-card"
+            style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', border: 'none', cursor: 'pointer', color: 'var(--on-surface)' }}
+          >
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(255,184,116,0.1)', color: 'var(--tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FiUsers size={24} />
+            </div>
+            <span style={{ fontWeight: 600 }}>Invite Team</span>
+          </button>
+
+          <button
+            onClick={() => { setQuickActionsOpen(false); navigate("/chat"); }}
+            className="glass-card"
+            style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', border: 'none', cursor: 'pointer', color: 'var(--on-surface)' }}
+          >
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(65,238,130,0.1)', color: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FiMessageSquare size={24} />
+            </div>
+            <span style={{ fontWeight: 600 }}>New Message</span>
+          </button>
+
+          <button
+            onClick={() => { setQuickActionsOpen(false); navigate("/settings"); }}
+            className="glass-card"
+            style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', border: 'none', cursor: 'pointer', color: 'var(--on-surface)' }}
+          >
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', color: 'var(--outline)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FiSettings size={24} />
+            </div>
+            <span style={{ fontWeight: 600 }}>Settings</span>
+          </button>
+        </div>
+      </Modal>
+
       {/* Global Toast */}
-      <Toast message={toastMsg} onClose={() => setToastMsg("")} />
+      <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg("")} />
     </div>
   );
 }

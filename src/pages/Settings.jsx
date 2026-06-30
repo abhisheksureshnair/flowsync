@@ -30,6 +30,7 @@ function Settings() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("profile");
   const [toastMsg, setToastMsg] = useState("");
+  const [toastType, setToastType] = useState("success");
   
   // Form State
   const initialProfile = {
@@ -50,15 +51,18 @@ function Settings() {
 
   const handleSaveProfile = () => {
     setToastMsg("Profile updated successfully!");
+    setToastType("success");
   };
 
   const handleCancelProfile = () => {
     setProfileData(initialProfile);
     setToastMsg("Changes reverted.");
+    setToastType("info");
   };
 
   const handleChangePicture = () => {
     setToastMsg("File upload dialog opened...");
+    setToastType("info");
   };
 
   return (
@@ -72,13 +76,13 @@ function Settings() {
             <input type="text" placeholder="Search settings..." />
           </div>
           <div className="header-actions">
-            <button className="btn-secondary" onClick={() => setToastMsg("Quick actions opened")}>Quick Actions</button>
+            <button className="btn-secondary" onClick={() => { setToastMsg("Quick actions opened"); setToastType("info"); }}>Quick Actions</button>
             <button className="btn-primary" onClick={() => navigate("/tasks")}>
               <FiPlus size={16} style={{ marginRight: '6px' }} />
               Create
             </button>
             <div className="header-divider" style={{ width: '1px', height: '24px', background: 'var(--outline-variant)' }}></div>
-            <button className="icon-btn" onClick={() => setToastMsg("Notifications panel")}><FiBell size={20} /></button>
+            <button className="icon-btn" onClick={() => { setToastMsg("Notifications panel"); setToastType("info"); }}><FiBell size={20} /></button>
           </div>
         </header>
 
@@ -249,7 +253,7 @@ function Settings() {
                         <FiMonitor size={32} />
                       </div>
                       <p>This section is under construction.</p>
-                      <button className="btn-secondary" onClick={() => setToastMsg("Feature coming soon!")}>Notify me when ready</button>
+                      <button className="btn-secondary" onClick={() => { setToastMsg("Feature coming soon!"); setToastType("info"); }}>Notify me when ready</button>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -258,7 +262,7 @@ function Settings() {
           </motion.div>
         </div>
       </div>
-      <Toast message={toastMsg} onClose={() => setToastMsg("")} />
+      <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg("")} />
     </div>
   );
 }
