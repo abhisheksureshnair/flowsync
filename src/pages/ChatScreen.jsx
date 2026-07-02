@@ -16,8 +16,9 @@ import {
   FiPaperclip,
   FiSmile
 } from "react-icons/fi";
-import { getChat, sendChat, fetchChat as fetchChatApi } from "../api/chatApi";
+import { getChat, fetchChat as fetchChatApi } from "../api/chatApi";
 import { allUser } from "../api/userApi";
+import socket from "../socket/socket";
 
 const messageVariants = {
   hidden: { y: 10, opacity: 0, scale: 0.95 },
@@ -81,10 +82,10 @@ function ChatScreen() {
   const chatContainerRef = useRef(null);
 
   const activeChannel = activeChannelId ? channels.find(c => c.id === activeChannelId) : null;
-  const activeDMUser = activeDMUserId ? users.find(u => u._id === activeDMUserId) : null;
+  const activeDMUser = activeDMUserId ? users.find(u => (u._id || u.id) === activeDMUserId) : null;
   const currentUser = JSON.parse(localStorage.getItem("user")) || {};
   const currentUserId = currentUser.id || currentUser._id;
-  const otherUsers = users.filter(u => u._id !== currentUserId);
+  const otherUsers = users.filter(u => (u._id || u.id) !== currentUserId);
 
   const formatTime = (isoString) => {
     if (!isoString) return "";
@@ -98,15 +99,15 @@ function ChatScreen() {
 
   const getDMMessages = () => {
     const filtered = allChats.filter(chat => {
-      const sId = typeof chat.sender === 'object' ? chat.sender?._id : chat.sender;
-      const rId = typeof chat.receiver === 'object' ? chat.receiver?._id : chat.receiver;
+      const sId = typeof chat.sender === 'object' ? (chat.sender?._id || chat.sender?.id) : chat.sender;
+      const rId = typeof chat.receiver === 'object' ? (chat.receiver?._id || chat.receiver?.id) : chat.receiver;
       return (sId === currentUserId && rId === activeDMUserId) ||
         (sId === activeDMUserId && rId === currentUserId);
     });
 
     return filtered.map(chat => {
-      const sId = typeof chat.sender === 'object' ? chat.sender?._id : chat.sender;
-      const senderUser = users.find(u => u._id === sId);
+      const sId = typeof chat.sender === 'object' ? (chat.sender?._id || chat.sender?.id) : chat.sender;
+      const senderUser = users.find(u => (u._id || u.id) === sId);
       const isSelf = sId === currentUserId;
       return {
         id: chat._id,
@@ -160,12 +161,22 @@ function ChatScreen() {
 
   const sendMessage = async (data) => {
     try {
-      const response = await sendChat(data);
-      if (response && response.status === 200 && response.data?.success) {
-        await fetchChat(data.receiver);
-      }
+      socket.emit("sendMessage", {
+        sender: currentUserId,
+        receiver: data.receiver,
+        message: data.message
+      });
+
+      const newChatObj = {
+        _id: `temp-${Date.now()}`,
+        sender: currentUserId,
+        receiver: data.receiver,
+        message: data.message,
+        createdAt: new Date().toISOString()
+      };
+      setAllChats((prev) => [...prev, newChatObj]);
     } catch (error) {
-      console.error("Error sending chat:", error);
+      console.error("Error sending chat via socket:", error);
     }
   };
 
@@ -234,8 +245,8 @@ function ChatScreen() {
           const currentUser = JSON.parse(localStorage.getItem("user")) || {};
           const currentUserId = currentUser.id || currentUser._id;
           const otherChats = prev.filter(chat => {
-            const sId = typeof chat.sender === 'object' ? chat.sender?._id : chat.sender;
-            const rId = typeof chat.receiver === 'object' ? chat.receiver?._id : chat.receiver;
+            const sId = typeof chat.sender === 'object' ? (chat.sender?._id || chat.sender?.id) : chat.sender;
+            const rId = typeof chat.receiver === 'object' ? (chat.receiver?._id || chat.receiver?.id) : chat.receiver;
             const isMatch = (sId === currentUserId && rId === reciver) ||
               (sId === reciver && rId === currentUserId);
             return !isMatch;
@@ -253,6 +264,17 @@ function ChatScreen() {
       fetchChat(activeDMUserId);
     }
   }, [activeDMUserId]);
+
+  useEffect(() => {
+    socket.on("receiveMessage", (chat) => {
+      console.log(chat);
+      setAllChats((prev) => [...prev, chat]);
+    });
+
+    return () => {
+      socket.off("receiveMessage");
+    };
+  }, []);
 
   return (
     <div className="app-layout">
@@ -318,11 +340,12 @@ function ChatScreen() {
               <h4 style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--outline)', margin: '24px 8px 8px 8px', fontWeight: 600 }}>Direct Messages</h4>
 
               {otherUsers.map(user => {
-                const isActive = user._id === activeDMUserId;
+                const userId = user._id || user.id;
+                const isActive = userId === activeDMUserId;
                 return (
                   <button
-                    key={user._id}
-                    onClick={() => selectDMUser(user._id)}
+                    key={userId}
+                    onClick={() => selectDMUser(userId)}
                     style={{
                       display: 'flex',
                       alignItems: 'center',

@@ -42,5 +42,4 @@ export const fetchTheChat = async (sender, receiver) => {
     error.statusCode = 406;
     throw error;
   }
-  return [];
 };

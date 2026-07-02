@@ -1,3 +1,4 @@
+import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Login from "./pages/Login";
@@ -8,8 +9,17 @@ import Tasks from "./pages/Tasks";
 import Team from "./pages/Team";
 import Settings from "./pages/Settings";
 import Calendar from "./components/Calender/Calendar";
+import socket from "./socket/socket";
 
 function App() {
+  useEffect(() => {
+    const userId = localStorage.getItem("user_id");
+    if (userId) {
+      socket.connect();
+      socket.emit("join", userId);
+    }
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>

@@ -5,6 +5,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { login } from "../api/authApi";
 import loginBg from "../assets/login-bg.png";
 import Toast from "../components/ui/Toast";
+import socket from "../socket/socket";
 
 function Login() {
   const navigate = useNavigate();
@@ -25,8 +26,14 @@ function Login() {
       });
       console.log(response);
       if (response.status == 200) {
+        const userId = response.data.user.id || response.data.user._id;
         localStorage.setItem("user", JSON.stringify(response.data.user));
         localStorage.setItem("token", response.data.token);
+        localStorage.setItem("user_id", userId);
+
+        socket.connect();
+        socket.emit("join", userId);
+
         navigate("/dashboard");
       } else {
         setToastMsg(response.data?.message || "Login failed");
