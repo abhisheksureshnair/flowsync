@@ -3,7 +3,7 @@ import { taskServices } from "../services/task.services.js";
 
 export const getAllTask = async (req, res) => {
   try {
-    const allTask = await Task.find();
+    const allTask = await Task.find().populate("assignedTo", "name");
     return res.status(200).json({
       success: true,
       data: allTask,
@@ -54,7 +54,7 @@ export const addNewTask = async (req, res) => {
 
 export const getUseraddedTask = async (req, res) => {
   try {
-    const task = await Task.find({ createdBy: req.user.id });
+    const task = await Task.find({ createdBy: req.user.id }).populate("assignedTo", "name");
     res.status(200).json({
       success: true,
       data: task,
@@ -69,10 +69,15 @@ export const getUseraddedTask = async (req, res) => {
 
 export const getUserTask = async (req, res) => {
   try {
-    const task = await Task.find({ assignedTo: req.user.id });
+    const task = await Task.find({ assignedTo: req.user.id }).populate("assignedTo", "name");
     res.status(200).json({
       success: true,
       data: task,
     });
-  } catch {}
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 };

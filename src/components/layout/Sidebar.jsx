@@ -11,7 +11,8 @@ import {
   FiSettings,
   FiChevronLeft,
   FiChevronRight,
-  FiPlus
+  FiPlus,
+  FiCpu
 } from "react-icons/fi";
 
 export default function Sidebar() {
@@ -24,6 +25,7 @@ export default function Sidebar() {
     { title: "Tasks", path: "/tasks", icon: <FiCheckSquare /> },
     { title: "Team", path: "/team", icon: <FiUsers /> },
     { title: "Chat", path: "/chat", icon: <FiMessageSquare /> },
+    { title: "Flow AI", path: "/ai-assist", icon: <FiCpu /> },
     { title: "Calendar", path: "/calendar", icon: <FiCalendar /> },
     { title: "Settings", path: "/settings", icon: <FiSettings /> },
   ];

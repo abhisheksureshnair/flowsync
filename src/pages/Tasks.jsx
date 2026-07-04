@@ -23,33 +23,11 @@ import { addNewTask as addNewTaskApi, allTask, getUserAddedTask, getUserTask } f
 import noTasksImg from "../assets/no-tasks.png";
 
 
-const MEMBERS = [
-  {
-    id: "mem-1",
-    name: "Alex Rivera",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&q=80"
-  },
-  {
-    id: "mem-2",
-    name: "Sarah Chen",
-    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=60&q=80"
-  },
-  {
-    id: "mem-3",
-    name: "Marcus Thorne",
-    avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=60&q=80"
-  },
-  {
-    id: "mem-4",
-    name: "Elena Rostova",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=60&q=80"
-  },
-  {
-    id: "mem-5",
-    name: "Jordan Lee",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=60&q=80"
-  }
-];
+const UNASSIGNED_MEMBER = {
+  id: "unassigned",
+  name: "Unassigned",
+  avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&q=80"
+};
 
 const PROJECTS = [
   "Nova Design System",
@@ -68,57 +46,6 @@ const itemVariants = {
   visible: { y: 0, opacity: 1, transition: { duration: 0.4, ease: "easeOut" } }
 };
 
-const INITIAL_TASKS = [
-  {
-    id: "task-1",
-    title: "Refactor Authentication Flow",
-    desc: "Update JWT handling to support refresh tokens and multi-session persistence.",
-    priority: "High",
-    status: "In Process",
-    date: "Oct 12",
-    comments: 3,
-    attachments: 1,
-    project: "Sync Engine",
-    assignee: MEMBERS[1] // Sarah Chen
-  },
-  {
-    id: "task-2",
-    title: "Design System Audit",
-    desc: "Review all shared components for consistency with the new glassmorphic theme.",
-    priority: "Medium",
-    status: "To Do",
-    date: "Oct 15",
-    comments: 8,
-    attachments: 0,
-    project: "Nova Design System",
-    assignee: MEMBERS[0] // Alex Rivera
-  },
-  {
-    id: "task-3",
-    title: "API Gateway Stress Test",
-    desc: "Validate performance under 10k concurrent connections for the new sync engine.",
-    priority: "High",
-    status: "In Process",
-    date: "Oct 10",
-    comments: 2,
-    attachments: 0,
-    project: "Sync Engine",
-    assignee: MEMBERS[2] // Marcus Thorne
-  },
-  {
-    id: "task-4",
-    title: "Draft Q4 Roadmap",
-    desc: "Collaborate with product managers to write down deliverables for Q4 releases.",
-    priority: "Low",
-    status: "Completed",
-    date: "Done",
-    comments: 0,
-    attachments: 0,
-    project: "FlowSync App",
-    assignee: MEMBERS[4] // Jordan Lee
-  }
-];
-
 const formatDate = (dateStr) => {
   if (!dateStr) return "No date";
   if (dateStr === "Done" || dateStr === "Today") return dateStr;
@@ -134,7 +61,7 @@ const formatDate = (dateStr) => {
 
 function Tasks() {
   const navigate = useNavigate();
-  const [tasks, setTasks] = useState(INITIAL_TASKS);
+  const [tasks, setTasks] = useState([]);
   const [userAddedTasks, setUserAddedTasks] = useState([]);
   const [userTasks, setUserTasks] = useState([]);
   const [activeTab, setActiveTab] = useState("All Tasks");
@@ -179,7 +106,7 @@ function Tasks() {
                 id: assignedUser._id,
                 name: assignedUser.name || assignedUser.username,
                 avatar: assignedUser.profileImage || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&q=80"
-              } : MEMBERS[0]
+              } : UNASSIGNED_MEMBER
             };
           });
           setTasks(mappedTasks);
@@ -210,7 +137,7 @@ function Tasks() {
                 id: assignedUser._id,
                 name: assignedUser.name || assignedUser.username,
                 avatar: assignedUser.profileImage || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&q=80"
-              } : MEMBERS[0]
+              } : UNASSIGNED_MEMBER
             };
           });
           setUserTasks(mappedTasks);
@@ -246,7 +173,7 @@ function Tasks() {
                 id: assignedUser._id,
                 name: assignedUser.name || assignedUser.username,
                 avatar: assignedUser.profileImage || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&q=80"
-              } : MEMBERS[0]
+              } : UNASSIGNED_MEMBER
             };
           });
           setUserAddedTasks(mappedTasks);
@@ -342,7 +269,7 @@ function Tasks() {
             id: assignedUser._id,
             name: assignedUser.name || assignedUser.username,
             avatar: assignedUser.profileImage || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&q=80"
-          } : (MEMBERS.find(m => m.id === newTask.assignedTo) || MEMBERS[0])
+          } : UNASSIGNED_MEMBER
         };
 
         setTasks([taskObj, ...tasks]);

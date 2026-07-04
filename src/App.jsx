@@ -9,6 +9,7 @@ import Tasks from "./pages/Tasks";
 import Team from "./pages/Team";
 import Settings from "./pages/Settings";
 import Calendar from "./components/Calender/Calendar";
+import AIAssist from "./pages/AIAssist";
 import socket from "./socket/socket";
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/chat" element={<ChatScreen />} />
+        <Route path="/ai-assist" element={<AIAssist />} />
         <Route path="/tasks" element={<Tasks />} />
         <Route path="/team" element={<Team />} />
         <Route path="/settings" element={<Settings />} />

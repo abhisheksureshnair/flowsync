@@ -8,7 +8,6 @@ import Chat from "./models/Chat.js";
 dotenv.config();
 
 const PORT = process.env.PORT || 8080;
-
 // console.log(process.env.MONGODB_URI);
 connectDB();
 
@@ -18,7 +17,7 @@ const httpServer = createServer(app);
 // Create Socket.IO Server
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:5174",
+    origin: ["http://localhost:5173", "http://localhost:5174"],
     methods: ["GET", "POST"],
   },
 });
