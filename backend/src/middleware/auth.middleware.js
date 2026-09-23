@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
+import User from "../models/User.js";
 
-const auth = (req, res, next) => {
+const auth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -26,8 +27,24 @@ const auth = (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    // If decoded payload lacks team info, hydrate from DB
+    let userTeam = decoded.team;
+    let userTeamId = decoded.teamId;
+
+    if (!userTeam && !userTeamId) {
+      const userDoc = await User.findById(decoded.id).select("team teamId role");
+      if (userDoc) {
+        userTeam = userDoc.team || "";
+        userTeamId = userDoc.teamId || null;
+      }
+    }
+
     // Store decoded user
-    req.user = decoded;
+    req.user = {
+      ...decoded,
+      team: userTeam || "",
+      teamId: userTeamId || null,
+    };
 
     next();
   } catch (error) {

@@ -1,31 +1,47 @@
-import React, { useState } from "react";
-import "../styles/global.css";
-import "../styles/login.css";
-import { useNavigate, Link } from "react-router-dom";
-import { login } from "../api/authApi";
-import loginBg from "../assets/login-bg.png";
-import Toast from "../components/ui/Toast";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { login, register } from "../api/authApi";
+import { fetchteamname, addteamname } from "../api/teamnameApi";
 import socket from "../socket/socket";
+import Toast from "../components/ui/Toast";
+import flowsyncIcon from "../assets/flowsync-icon.png";
+import "../styles/login.css";
 
-function Login() {
-  const navigate = useNavigate();
+const Hero = ({
+  variant,
+  title,
+  text,
+  buttonLabel,
+  onSwitch,
+}) => (
+  <div className={`hero ${variant}`}>
+    <div className="hero-brand-pill">
+      <img src={flowsyncIcon} alt="FlowSync" className="hero-pill-icon" />
+      <span>FlowSync</span>
+    </div>
+    <h2>{title}</h2>
+    <p>{text}</p>
+    <button
+      type="button"
+      className="switch"
+      onClick={onSwitch}
+    >
+      {buttonLabel}
+    </button>
+  </div>
+);
+
+const LoginForm = ({ onLoginSuccess, showToast }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [toastMsg, setToastMsg] = useState("");
-  const [toastType, setToastType] = useState("success");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Login Called");
-    // Simply navigate to dashboard for mock login
-    // navigate("/dashboard");
+    setLoading(true);
     try {
-      const response = await login({
-        username,
-        password
-      });
-      console.log(response);
-      if (response.status == 200) {
+      const response = await login({ username, password });
+      if (response.status === 200) {
         const userId = response.data.user.id || response.data.user._id;
         localStorage.setItem("user", JSON.stringify(response.data.user));
         localStorage.setItem("token", response.data.token);
@@ -34,98 +50,496 @@ function Login() {
         socket.connect();
         socket.emit("join", userId);
 
-        navigate("/dashboard");
+        if (onLoginSuccess) {
+          onLoginSuccess();
+        }
       } else {
-        setToastMsg(response.data?.message || "Login failed");
-        setToastType("error");
+        showToast(response.data?.message || "Login failed", "error");
       }
     } catch (error) {
       console.error(error);
-      const errMsg = error.response?.data?.message || error.message || "An error occurred during login";
-      setToastMsg(errMsg);
-      setToastType("error");
+      const errMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "An error occurred during login";
+      showToast(errMsg, "error");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div
-      className="login-page"
-      style={{
-        backgroundImage: `linear-gradient(rgba(10, 10, 18, 0.4), rgba(10, 10, 18, 0.6)), url(${loginBg})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat"
-      }}
-    >
-      {/* Background glow effects */}
-      <div className="ambient-glow bg-blue"></div>
-      <div className="ambient-glow bg-green"></div>
-
-      <div className="login-card glass-card">
-        {/* Logo and Brand Header */}
-        <div className="login-header">
-          <svg className="login-logo animate-glow" width="64" height="64" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M40 60C40 48.9543 48.9543 40 60 40H140C151.046 40 160 48.9543 160 60V140C160 151.046 151.046 160 140 160H60C48.9543 160 40 151.046 40 140V60Z" fill="#5B8CFF" fillOpacity="0.15" />
-            <path d="M70 70L100 100L70 130" stroke="#5B8CFF" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M110 70L140 100L110 130" stroke="#5B8CFF" strokeWidth="14" strokeOpacity="0.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <h1 className="login-brand-title">FlowSync</h1>
-          <p className="login-brand-subtitle">Productivity Workspace</p>
+    <form className="form login" onSubmit={handleSubmit}>
+      <div className="form-brand-header">
+        <img src={flowsyncIcon} alt="FlowSync" className="form-brand-icon" />
+        <h2>Sign In</h2>
+      </div>
+      <div className="form-inputs">
+        <div className="input-box">
+          <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+          />
         </div>
-
-        {/* Login Form */}
-        <form className="login-form" onSubmit={handleLogin}>
-          <div className="input-group">
-            <label className="input-label">Username</label>
-            <div className="input-wrapper">
-              <span className="material-symbols-outlined input-icon">person</span>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="Enter your username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="input-group">
-            <label className="input-label">Password</label>
-            <div className="input-wrapper">
-              <span className="material-symbols-outlined input-icon">lock</span>
-              <input
-                type="password"
-                className="form-input"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="form-actions">
-            <label className="remember-me">
-              <input type="checkbox" className="checkbox-input" />
-              <span>Remember me</span>
-            </label>
-            <a href="#" className="forgot-link">Forgot password?</a>
-          </div>
-
-          <button type="submit" className="login-submit-btn glow-primary" >
-            Sign In
-          </button>
-        </form>
-
-        <div className="login-footer">
-          <span>Don't have an account?</span>
-          <Link to="/register" className="signup-link">Register</Link>
+        <div className="input-box">
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
         </div>
       </div>
-      <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg("")} />
+      <button
+        type="button"
+        className="forgot-link-btn"
+        onClick={() => showToast("Please contact administrator to reset password", "info")}
+      >
+        Forgot password?
+      </button>
+      <button type="submit" className="submit-btn" disabled={loading}>
+        {loading ? "Signing In..." : "Sign In"}
+      </button>
+    </form>
+  );
+};
+
+const RegisterForm = ({ onRegisterSuccess, showToast }) => {
+  const [formData, setFormData] = useState({
+    team: "",
+    name: "",
+    username: "",
+    email: "",
+    password: "",
+  });
+  const [teams, setTeams] = useState([]);
+  const [fetchingTeams, setFetchingTeams] = useState(false);
+  const [isAddingTeam, setIsAddingTeam] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [newTeamName, setNewTeamName] = useState("");
+  const [savingTeam, setSavingTeam] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const dropdownRef = useRef(null);
+
+  const fetchTeamsList = async (manualClick = false) => {
+    setFetchingTeams(true);
+    try {
+      const response = await fetchteamname();
+      const list = Array.isArray(response?.data?.data)
+        ? response.data.data
+        : Array.isArray(response?.data)
+        ? response.data
+        : [];
+      setTeams(list);
+      if (manualClick && list.length === 0) {
+        showToast("No team is registered. Click '+ Add Team' to create one.", "info");
+      }
+    } catch (error) {
+      console.error("Failed to fetch teams:", error);
+    } finally {
+      setFetchingTeams(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTeamsList(false);
+  }, []);
+
+  // Close custom dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleToggleDropdown = () => {
+    if (!isDropdownOpen) {
+      fetchTeamsList(true);
+    }
+    setIsDropdownOpen((prev) => !prev);
+  };
+
+  const handleSelectTeam = (teamName) => {
+    setFormData((prev) => ({ ...prev, team: teamName }));
+    setIsDropdownOpen(false);
+  };
+
+  const handleSaveTeam = async (e) => {
+    if (e) e.preventDefault();
+    const trimmed = newTeamName.trim();
+    if (!trimmed) {
+      showToast("Please enter a team name", "warning");
+      return;
+    }
+    setSavingTeam(true);
+    try {
+      const response = await addteamname({ teamName: trimmed });
+      showToast(response?.data?.message || "Team registered successfully!", "success");
+      setNewTeamName("");
+      setIsAddingTeam(false);
+      await fetchTeamsList(false);
+      setFormData((prev) => ({ ...prev, team: trimmed }));
+    } catch (error) {
+      console.error("Error adding team:", error);
+      const errMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to add team";
+      showToast(errMsg, "error");
+    } finally {
+      setSavingTeam(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const response = await register(formData);
+      if (response.status === 200) {
+        showToast("Registration successful! Please login.", "success");
+        if (onRegisterSuccess) {
+          onRegisterSuccess();
+        }
+      } else {
+        showToast(
+          response.data?.message || response.message || "Registration failed",
+          "error"
+        );
+      }
+    } catch (error) {
+      console.error(error);
+      const errMsg =
+        error.response?.data?.message ||
+        error.message ||
+        "An error occurred during registration";
+      showToast(errMsg, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form className="form register" onSubmit={handleSubmit}>
+      <div className="form-brand-header">
+        <img src={flowsyncIcon} alt="FlowSync" className="form-brand-icon" />
+        <h2>Create Account</h2>
+      </div>
+      <div className="form-inputs">
+        {/* Modern Team Dropdown & Add Option above Full Name */}
+        <div className="team-control-group">
+          {!isAddingTeam ? (
+            <div className="team-select-row">
+              {/* Custom Modern Dropdown */}
+              <div className="team-custom-dropdown" ref={dropdownRef}>
+                <div
+                  className={`team-dropdown-trigger ${isDropdownOpen ? "open" : ""} ${
+                    formData.team ? "has-value" : ""
+                  }`}
+                  onClick={handleToggleDropdown}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleToggleDropdown();
+                    } else if (e.key === "Escape") {
+                      setIsDropdownOpen(false);
+                    }
+                  }}
+                  aria-haspopup="listbox"
+                  aria-expanded={isDropdownOpen}
+                >
+                  <div className="team-trigger-content">
+                    <div className="team-trigger-icon">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                      </svg>
+                    </div>
+                    <span className="team-trigger-label">
+                      {formData.team
+                        ? formData.team
+                        : fetchingTeams
+                        ? "Loading teams..."
+                        : teams.length === 0
+                        ? "No team is registered"
+                        : "Select Team"}
+                    </span>
+                  </div>
+
+                  <div className="team-trigger-actions">
+                    {formData.team && (
+                      <button
+                        type="button"
+                        className="team-clear-selection-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFormData((prev) => ({ ...prev, team: "" }));
+                        }}
+                        title="Clear selection"
+                      >
+                        ✕
+                      </button>
+                    )}
+                    <div className={`team-dropdown-chevron ${isDropdownOpen ? "rotated" : ""}`}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {isDropdownOpen && (
+                  <div className="team-dropdown-menu" role="listbox">
+                    {fetchingTeams ? (
+                      <div className="team-menu-status">
+                        <div className="team-status-spinner"></div>
+                        <span>Loading teams...</span>
+                      </div>
+                    ) : teams.length === 0 ? (
+                      <div className="team-menu-empty">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <line x1="8" y1="12" x2="16" y2="12"></line>
+                        </svg>
+                        <div className="team-empty-text">No team is registered</div>
+                        <button
+                          type="button"
+                          className="team-empty-action-btn"
+                          onClick={() => {
+                            setIsDropdownOpen(false);
+                            setIsAddingTeam(true);
+                          }}
+                        >
+                          + Create New Team
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="team-menu-list">
+                        {teams.map((t) => {
+                          const name = typeof t === "string" ? t : t.teamName;
+                          const id = t._id || name;
+                          const isSelected = formData.team === name;
+                          return (
+                            <div
+                              key={id}
+                              className={`team-menu-item ${isSelected ? "selected" : ""}`}
+                              onClick={() => handleSelectTeam(name)}
+                              role="option"
+                              aria-selected={isSelected}
+                            >
+                              <div className="team-item-left">
+                                <span className="team-item-badge">
+                                  {name.slice(0, 2).toUpperCase()}
+                                </span>
+                                <span className="team-item-name">{name}</span>
+                              </div>
+                              {isSelected && (
+                                <div className="team-item-check">
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                className="team-add-toggle-btn"
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  setIsAddingTeam(true);
+                }}
+                title="Add a new team"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Add Team</span>
+              </button>
+            </div>
+          ) : (
+            <div className="team-add-inline-row">
+              <input
+                type="text"
+                className="team-inline-input"
+                placeholder="Enter team name"
+                value={newTeamName}
+                onChange={(e) => setNewTeamName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSaveTeam();
+                  } else if (e.key === "Escape") {
+                    setIsAddingTeam(false);
+                    setNewTeamName("");
+                  }
+                }}
+                autoFocus
+              />
+              <button
+                type="button"
+                className="team-save-btn"
+                onClick={handleSaveTeam}
+                disabled={savingTeam}
+              >
+                {savingTeam ? "Saving..." : "Save"}
+              </button>
+              <button
+                type="button"
+                className="team-cancel-btn"
+                onClick={() => {
+                  setIsAddingTeam(false);
+                  setNewTeamName("");
+                }}
+                title="Cancel"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="input-box">
+          <input
+            type="text"
+            name="name"
+            placeholder="Full Name"
+            value={formData.name}
+            onChange={handleChange}
+            required
+          />
+        </div>
+        <div className="input-box">
+          <input
+            type="text"
+            name="username"
+            placeholder="Username"
+            value={formData.username}
+            onChange={handleChange}
+            required
+          />
+        </div>
+        <div className="input-box">
+          <input
+            type="email"
+            name="email"
+            placeholder="Email Address"
+            value={formData.email}
+            onChange={handleChange}
+            required
+          />
+        </div>
+        <div className="input-box">
+          <input
+            type="password"
+            name="password"
+            placeholder="Password"
+            value={formData.password}
+            onChange={handleChange}
+            required
+          />
+        </div>
+      </div>
+      <button type="submit" className="submit-btn" disabled={loading}>
+        {loading ? "Creating Account..." : "Sign Up"}
+      </button>
+    </form>
+  );
+};
+
+export const Login = ({ defaultRegister = false }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isRegister, setIsRegister] = useState(
+    defaultRegister || location.pathname === "/register"
+  );
+  const [toast, setToast] = useState({ msg: "", type: "success" });
+
+  const showToast = (msg, type = "success") => {
+    setToast({ msg, type });
+  };
+
+  return (
+    <div className="login-page-container">
+      {/* Futuristic Cyber Grid */}
+      <div className="login-bg-grid"></div>
+
+      {/* Floating Animated Ambient Glows */}
+      <div className="ambient-glow bg-blue"></div>
+      <div className="ambient-glow bg-purple"></div>
+      <div className="ambient-glow bg-cyan"></div>
+
+      {/* Top Floating Brand Indicator */}
+      <div className="login-top-brand">
+        <img src={flowsyncIcon} alt="FlowSync" className="top-brand-icon" />
+        <span className="top-brand-text">FlowSync</span>
+        <span className="top-brand-badge">Workspace</span>
+      </div>
+
+      <div className={`card ${isRegister ? "register" : ""}`}>
+        <div className="card-bg">
+          <div className="card-bg-layer signup-layer"></div>
+          <div className="card-bg-layer login-layer"></div>
+          <div className="card-bg-overlay"></div>
+        </div>
+
+        <Hero
+          variant="register"
+          title="Welcome back"
+          text="Login to review your projects and stay in sync."
+          buttonLabel="Login"
+          onSwitch={() => setIsRegister(false)}
+        />
+        <RegisterForm
+          onRegisterSuccess={() => setIsRegister(false)}
+          showToast={showToast}
+        />
+
+        <Hero
+          variant="login"
+          title="Hello there"
+          text="Begin your journey with the ultimate productivity workspace."
+          buttonLabel="Sign Up"
+          onSwitch={() => setIsRegister(true)}
+        />
+        <LoginForm
+          onLoginSuccess={() => navigate("/dashboard")}
+          showToast={showToast}
+        />
+      </div>
+
+      <Toast
+        message={toast.msg}
+        type={toast.type}
+        onClose={() => setToast({ msg: "", type: "success" })}
+      />
     </div>
   );
-}
+};
 
 export default Login;

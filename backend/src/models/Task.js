@@ -32,15 +32,27 @@ const taskSchema = new mongoose.Schema(
       required: true,
     },
 
-    assignedTo: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
+    assignedTo: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
 
     project: {
       type: String,
       default: "General",
+    },
+
+    team: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    teamId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Team",
     },
   },
   {

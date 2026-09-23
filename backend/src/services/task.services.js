@@ -8,17 +8,28 @@ export const taskServices = async (
   dueDate,
   assignedTo,
   project,
-  createdBy
+  createdBy,
+  team = "",
+  teamId = null
 ) => {
-  const existingTask = await Task.findOne({
-    assignedTo,
-    dueDate: new Date(dueDate),
-  });
+  const assignedList = Array.isArray(assignedTo)
+    ? assignedTo
+    : assignedTo
+    ? [assignedTo]
+    : [];
 
-  if (existingTask && status != "Completed") {
-    const error = new Error("This user already has a task on this date.");
-    error.statusCode = 406;
-    throw error;
+  if (assignedList.length > 0 && dueDate) {
+    const existingTask = await Task.findOne({
+      assignedTo: { $in: assignedList },
+      dueDate: new Date(dueDate),
+      status: { $ne: "Completed" },
+    });
+
+    if (existingTask && status !== "Completed") {
+      const error = new Error("One or more assigned users already have a task on this date.");
+      error.statusCode = 406;
+      throw error;
+    }
   }
 
   // Map status from frontend to backend enum values
@@ -43,9 +54,11 @@ export const taskServices = async (
     status: mappedStatus,
     priority,
     dueDate: dueDate ? new Date(dueDate) : undefined,
-    assignedTo,
+    assignedTo: assignedList,
     project: project || "General",
     createdBy,
+    team: team || "",
+    teamId: teamId || null,
   });
 
   await newTask.save();

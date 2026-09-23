@@ -1,5 +1,7 @@
 import User from "../models/User.js";
+import Team from "../models/TeamName.js";
 import bcrypt from "bcrypt";
+import mongoose from "mongoose";
 import { generateToken } from "../utils/jwt.js";
 
 export const loginService = async (username, password) => {
@@ -29,6 +31,8 @@ export const loginService = async (username, password) => {
       username: user.username,
       email: user.email,
       role: user.role,
+      team: user.team || "",
+      teamId: user.teamId || null,
     },
   };
 };
@@ -38,7 +42,8 @@ export const registrationService = async (
   username,
   email,
   password,
-  role
+  role,
+  team
 ) => {
   const existingUser = await User.findOne({ username });
   if (existingUser) {
@@ -57,6 +62,27 @@ export const registrationService = async (
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
+  // Resolve team & teamId
+  let resolvedTeamName = "";
+  let resolvedTeamId = null;
+
+  if (team && typeof team === "string" && team.trim()) {
+    const trimmed = team.trim();
+    let teamDoc = null;
+    if (mongoose.Types.ObjectId.isValid(trimmed)) {
+      teamDoc = await Team.findById(trimmed);
+    }
+    if (!teamDoc) {
+      teamDoc = await Team.findOne({ teamName: trimmed });
+    }
+    if (teamDoc) {
+      resolvedTeamName = teamDoc.teamName;
+      resolvedTeamId = teamDoc._id;
+    } else {
+      resolvedTeamName = trimmed;
+    }
+  }
+
   // Create user
   const newUser = new User({
     name,
@@ -64,11 +90,21 @@ export const registrationService = async (
     email,
     hashedPassword,
     role,
+    team: resolvedTeamName,
+    teamId: resolvedTeamId,
   });
 
   await newUser.save();
 
   return {
-    user: newUser,
+    user: {
+      id: newUser._id,
+      name: newUser.name,
+      username: newUser.username,
+      email: newUser.email,
+      role: newUser.role,
+      team: newUser.team,
+      teamId: newUser.teamId,
+    },
   };
 };

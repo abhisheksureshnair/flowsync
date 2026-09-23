@@ -3,7 +3,18 @@ import { taskServices } from "../services/task.services.js";
 
 export const getAllTask = async (req, res) => {
   try {
-    const allTask = await Task.find().populate("assignedTo", "name");
+    const userTeam = req.user?.team;
+    const userTeamId = req.user?.teamId;
+
+    const teamFilter = {};
+    if (userTeamId || userTeam) {
+      teamFilter.$or = [
+        ...(userTeamId ? [{ teamId: userTeamId }] : []),
+        ...(userTeam ? [{ team: userTeam }] : []),
+      ];
+    }
+
+    const allTask = await Task.find(teamFilter).populate("assignedTo", "name username profileImage");
     return res.status(200).json({
       success: true,
       data: allTask,
@@ -28,6 +39,9 @@ export const addNewTask = async (req, res) => {
       project,
     } = req.body;
     const createdBy = req.user.id;
+    const team = req.user?.team || "";
+    const teamId = req.user?.teamId || null;
+
     const response = await taskServices(
       title,
       description,
@@ -36,7 +50,9 @@ export const addNewTask = async (req, res) => {
       dueDate,
       assignedTo,
       project,
-      createdBy
+      createdBy,
+      team,
+      teamId
     );
 
     return res.status(200).json({
@@ -54,7 +70,7 @@ export const addNewTask = async (req, res) => {
 
 export const getUseraddedTask = async (req, res) => {
   try {
-    const task = await Task.find({ createdBy: req.user.id }).populate("assignedTo", "name");
+    const task = await Task.find({ createdBy: req.user.id }).populate("assignedTo", "name username profileImage");
     res.status(200).json({
       success: true,
       data: task,
@@ -69,7 +85,7 @@ export const getUseraddedTask = async (req, res) => {
 
 export const getUserTask = async (req, res) => {
   try {
-    const task = await Task.find({ assignedTo: req.user.id }).populate("assignedTo", "name");
+    const task = await Task.find({ assignedTo: req.user.id }).populate("assignedTo", "name username profileImage");
     res.status(200).json({
       success: true,
       data: task,

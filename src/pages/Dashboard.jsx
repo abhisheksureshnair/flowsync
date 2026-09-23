@@ -22,6 +22,7 @@ import {
 } from "react-icons/fi";
 import { getDashboardData } from "../api/dashboard";
 import { allTask } from "../api/taskApi";
+import { Skeleton, SkeletonCircle, StatCardSkeleton } from "../components/ui/Skeleton";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -46,30 +47,38 @@ function Dashboard() {
   const user = JSON.parse(localStorage.getItem("user")) || { name: "Guest" };
 
   useEffect(() => {
-    const fetchDashboard = async () => {
+    let isMounted = true;
+    const loadDashboard = async () => {
+      setIsLoading(true);
       try {
-        const res = await getDashboardData();
-        setDashboardData(res.data);
-      } catch (err) {
-        console.error("Failed to fetch dashboard data:", err);
+        await Promise.allSettled([
+          (async () => {
+            try {
+              const res = await getDashboardData();
+              if (isMounted) setDashboardData(res.data);
+            } catch (err) {
+              console.error("Failed to fetch dashboard data:", err);
+            }
+          })(),
+          (async () => {
+            try {
+              const responce = await allTask();
+              const raw = responce.data?.data || responce.data?.tasks || (Array.isArray(responce.data) ? responce.data : []);
+              const sorted = [...raw].sort(
+                (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+              );
+              if (isMounted) setTasks(sorted);
+            } catch (err) {
+              console.error("Failed to fetch task data:", err);
+            }
+          })()
+        ]);
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
-    const fetchTasks = async () => {
-      try {
-        const responce = await allTask();
-        const raw = responce.data?.data || responce.data?.tasks || (Array.isArray(responce.data) ? responce.data : []);
-        const sorted = [...raw].sort(
-          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-        );
-        setTasks(sorted);
-      } catch (err) {
-        console.error("Failed to fetch task data:", err);
-      }
-    };
-    fetchDashboard();
-    fetchTasks();
+    loadDashboard();
+    return () => { isMounted = false; };
   }, []);
 
   return (
@@ -103,18 +112,8 @@ function Dashboard() {
                   className="glass-card"
                   style={{ position: 'absolute', top: '100%', right: 0, marginTop: '12px', width: '320px', padding: '16px', zIndex: 100 }}
                 >
-                  <h4 style={{ margin: '0 0 12px 0', fontSize: '15px' }}>Recent Alerts</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                      <div style={{ padding: '6px', background: 'rgba(91,140,255,0.1)', color: 'var(--primary)', borderRadius: '50%' }}>
-                        <FiCheckCircle size={14} />
-                      </div>
-                      <div>
-                        <p style={{ margin: 0, fontSize: '13px', color: 'var(--on-surface)' }}>System update successful.</p>
-                        <span style={{ fontSize: '11px', color: 'var(--outline)' }}>2m ago</span>
-                      </div>
-                    </div>
-                  </div>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '15px' }}>Notifications</h4>
+                  <p style={{ margin: 0, fontSize: '13px', color: 'var(--on-surface-variant)' }}>No new notifications.</p>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -133,117 +132,143 @@ function Dashboard() {
             <motion.section variants={itemVariants} className="dashboard-hero" style={{ gridTemplateColumns: '1fr', display: 'flex', justifyContent: 'space-between' }}>
               <div className="welcome-text">
                 <h2 className="welcome-headline" style={{ fontSize: '36px' }}>Welcome back, {user.name}.</h2>
-                <p className="welcome-desc" style={{ fontSize: '16px', opacity: 0.8, marginTop: '8px' }}>
-                  {isLoading
-                    ? "Loading your workspace..."
-                    : dashboardData
+                {isLoading ? (
+                  <div style={{ marginTop: '10px' }}>
+                    <Skeleton width="340px" height="18px" borderRadius="4px" />
+                  </div>
+                ) : (
+                  <p className="welcome-desc" style={{ fontSize: '16px', opacity: 0.8, marginTop: '8px' }}>
+                    {dashboardData
                       ? <>You have <span className="highlight-text font-bold" style={{ color: 'var(--primary)' }}>{dashboardData.totalTasks}</span> tasks across <span className="highlight-text font-bold" style={{ color: 'var(--primary)' }}>{dashboardData.activeProject}</span> active projects this week.</>
                       : "Welcome to your workspace."}
-                </p>
+                  </p>
+                )}
               </div>
 
-              <div className="active-sprint-card glass-card" style={{ width: '320px', padding: '20px', cursor: 'pointer' }} onClick={() => navigate("/tasks")}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%' }}>
-                  <div style={{ position: 'relative', width: '56px', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(91, 140, 255, 0.1)', borderRadius: '50%' }}>
-                    <FiTrendingUp size={24} color="var(--primary)" />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--primary)', fontWeight: 600, letterSpacing: '1px' }}>Active Sprint</span>
-                    {dashboardData?.upcomingNextTask ? (
-                      <>
-                        <h4 style={{ fontSize: '16px', color: 'var(--on-surface)', margin: '4px 0' }}>{dashboardData.upcomingNextTask.title}</h4>
-                        <span style={{ fontSize: '13px', color: 'var(--on-surface-variant)' }}>
-                          {dashboardData.upcomingNextTask.dueDate
-                            ? `Due ${new Date(dashboardData.upcomingNextTask.dueDate).toLocaleDateString("en-US", { month: 'short', day: 'numeric' })}`
-                            : dashboardData.upcomingNextTask.status || "In Progress"}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <h4 style={{ fontSize: '16px', color: 'var(--on-surface)', margin: '4px 0' }}>No upcoming tasks</h4>
-                        <span style={{ fontSize: '13px', color: 'var(--on-surface-variant)' }}>All caught up!</span>
-                      </>
-                    )}
+              {isLoading ? (
+                <div className="active-sprint-card glass-card" style={{ width: '320px', padding: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%' }}>
+                    <SkeletonCircle size="56px" />
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <Skeleton width="80px" height="12px" borderRadius="4px" />
+                      <Skeleton width="160px" height="18px" borderRadius="6px" />
+                      <Skeleton width="100px" height="12px" borderRadius="4px" />
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="active-sprint-card glass-card" style={{ width: '320px', padding: '20px', cursor: 'pointer' }} onClick={() => navigate("/tasks")}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%' }}>
+                    <div style={{ position: 'relative', width: '56px', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(91, 140, 255, 0.1)', borderRadius: '50%' }}>
+                      <FiTrendingUp size={24} color="var(--primary)" />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--primary)', fontWeight: 600, letterSpacing: '1px' }}>Active Sprint</span>
+                      {dashboardData?.upcomingNextTask ? (
+                        <>
+                          <h4 style={{ fontSize: '16px', color: 'var(--on-surface)', margin: '4px 0' }}>{dashboardData.upcomingNextTask.title}</h4>
+                          <span style={{ fontSize: '13px', color: 'var(--on-surface-variant)' }}>
+                            {dashboardData.upcomingNextTask.dueDate
+                              ? `Due ${new Date(dashboardData.upcomingNextTask.dueDate).toLocaleDateString("en-US", { month: 'short', day: 'numeric' })}`
+                              : dashboardData.upcomingNextTask.status || "In Progress"}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <h4 style={{ fontSize: '16px', color: 'var(--on-surface)', margin: '4px 0' }}>No upcoming tasks</h4>
+                          <span style={{ fontSize: '13px', color: 'var(--on-surface-variant)' }}>All caught up!</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </motion.section>
 
             {/* Stats Grid */}
             <motion.section variants={itemVariants} className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px', marginTop: '10px' }}>
-              {/* Tasks Completed */}
-              <div className="stat-card glass-card" style={{ padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <span style={{ fontSize: '15px', color: 'var(--on-surface-variant)' }}>Tasks Completed</span>
-                  <div style={{ padding: '8px', background: 'rgba(65, 238, 130, 0.1)', borderRadius: '8px', color: 'var(--secondary)' }}>
-                    <FiCheckCircle size={20} />
-                  </div>
-                </div>
-                <h3 style={{ fontSize: '36px', fontWeight: 700, margin: '0 0 8px 0' }}>
-                  {isLoading ? "—" : dashboardData?.completedThisWeek ?? 0}
-                </h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
-                  <span style={{ color: 'var(--secondary)', fontWeight: 600 }}>This week</span>
-                  <span style={{ color: 'var(--outline)' }}>out of {isLoading ? "—" : dashboardData?.totalTasks ?? 0} total</span>
-                </div>
-              </div>
-
-              {/* Active Projects */}
-              <div className="stat-card glass-card" style={{ padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <span style={{ fontSize: '15px', color: 'var(--on-surface-variant)' }}>Active Projects</span>
-                  <div style={{ padding: '8px', background: 'rgba(91, 140, 255, 0.1)', borderRadius: '8px', color: 'var(--primary)' }}>
-                    <FiFolder size={20} />
-                  </div>
-                </div>
-                <h3 style={{ fontSize: '36px', fontWeight: 700, margin: '0 0 8px 0' }}>
-                  {isLoading ? "—" : dashboardData?.activeProject ?? 0}
-                </h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
-                  <span style={{ color: 'var(--primary)', fontWeight: 600 }}>In Progress</span>
-                </div>
-              </div>
-
-              {/* Team Members */}
-              <div className="stat-card glass-card" style={{ padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <span style={{ fontSize: '15px', color: 'var(--on-surface-variant)' }}>Team Members</span>
-                  <div style={{ padding: '8px', background: 'rgba(255, 184, 116, 0.1)', borderRadius: '8px', color: 'var(--tertiary)' }}>
-                    <FiUsers size={20} />
-                  </div>
-                </div>
-                <h3 style={{ fontSize: '36px', fontWeight: 700, margin: '0 0 8px 0' }}>
-                  {isLoading ? "—" : dashboardData?.totalMembers ?? 0}
-                </h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
-                  <span style={{ color: 'var(--tertiary)', fontWeight: 600 }}>Collaborators</span>
-                </div>
-              </div>
-
-              {/* Productivity */}
-              {(() => {
-                const completed = dashboardData?.completedThisWeek ?? 0;
-                const total = dashboardData?.totalTasks ?? 0;
-                const productivity = total > 0 ? Math.round((completed / total) * 100) : 0;
-                const circumference = 2 * Math.PI * 40; // r=40
-                const offset = circumference - (productivity / 100) * circumference;
-                return (
+              {isLoading ? (
+                <>
+                  <StatCardSkeleton />
+                  <StatCardSkeleton />
+                  <StatCardSkeleton />
+                  <StatCardSkeleton />
+                </>
+              ) : (
+                <>
+                  {/* Tasks Completed */}
                   <div className="stat-card glass-card" style={{ padding: '24px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                      <span style={{ fontSize: '15px', color: 'var(--on-surface-variant)' }}>Productivity</span>
+                      <span style={{ fontSize: '15px', color: 'var(--on-surface-variant)' }}>Tasks Completed</span>
                       <div style={{ padding: '8px', background: 'rgba(65, 238, 130, 0.1)', borderRadius: '8px', color: 'var(--secondary)' }}>
-                        <FiZap size={20} />
+                        <FiCheckCircle size={20} />
                       </div>
                     </div>
                     <h3 style={{ fontSize: '36px', fontWeight: 700, margin: '0 0 8px 0' }}>
-                      {isLoading ? "—" : `${productivity}%`}
+                      {dashboardData?.completedThisWeek ?? 0}
                     </h3>
-                    <div className="productivity-progress" style={{ height: '6px', background: 'var(--surface-high)', borderRadius: '3px', overflow: 'hidden', marginTop: '12px' }}>
-                      <div className="productivity-bar" style={{ width: `${productivity}%`, height: '100%', background: 'var(--secondary)', borderRadius: '3px', boxShadow: '0 0 10px rgba(65, 238, 130, 0.5)', transition: 'width 0.8s ease-out' }}></div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+                      <span style={{ color: 'var(--secondary)', fontWeight: 600 }}>This week</span>
+                      <span style={{ color: 'var(--outline)' }}>out of {dashboardData?.totalTasks ?? 0} total</span>
                     </div>
                   </div>
-                );
-              })()}
+
+                  {/* Active Projects */}
+                  <div className="stat-card glass-card" style={{ padding: '24px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                      <span style={{ fontSize: '15px', color: 'var(--on-surface-variant)' }}>Active Projects</span>
+                      <div style={{ padding: '8px', background: 'rgba(91, 140, 255, 0.1)', borderRadius: '8px', color: 'var(--primary)' }}>
+                        <FiFolder size={20} />
+                      </div>
+                    </div>
+                    <h3 style={{ fontSize: '36px', fontWeight: 700, margin: '0 0 8px 0' }}>
+                      {dashboardData?.activeProject ?? 0}
+                    </h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+                      <span style={{ color: 'var(--primary)', fontWeight: 600 }}>In Progress</span>
+                    </div>
+                  </div>
+
+                  {/* Team Members */}
+                  <div className="stat-card glass-card" style={{ padding: '24px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                      <span style={{ fontSize: '15px', color: 'var(--on-surface-variant)' }}>Team Members</span>
+                      <div style={{ padding: '8px', background: 'rgba(255, 184, 116, 0.1)', borderRadius: '8px', color: 'var(--tertiary)' }}>
+                        <FiUsers size={20} />
+                      </div>
+                    </div>
+                    <h3 style={{ fontSize: '36px', fontWeight: 700, margin: '0 0 8px 0' }}>
+                      {dashboardData?.totalMembers ?? 0}
+                    </h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+                      <span style={{ color: 'var(--tertiary)', fontWeight: 600 }}>Collaborators</span>
+                    </div>
+                  </div>
+
+                  {/* Productivity */}
+                  {(() => {
+                    const completed = dashboardData?.completedThisWeek ?? 0;
+                    const total = dashboardData?.totalTasks ?? 0;
+                    const productivity = total > 0 ? Math.round((completed / total) * 100) : 0;
+                    return (
+                      <div className="stat-card glass-card" style={{ padding: '24px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                          <span style={{ fontSize: '15px', color: 'var(--on-surface-variant)' }}>Productivity</span>
+                          <div style={{ padding: '8px', background: 'rgba(65, 238, 130, 0.1)', borderRadius: '8px', color: 'var(--secondary)' }}>
+                            <FiZap size={20} />
+                          </div>
+                        </div>
+                        <h3 style={{ fontSize: '36px', fontWeight: 700, margin: '0 0 8px 0' }}>
+                          {`${productivity}%`}
+                        </h3>
+                        <div className="productivity-progress" style={{ height: '6px', background: 'var(--surface-high)', borderRadius: '3px', overflow: 'hidden', marginTop: '12px' }}>
+                          <div className="productivity-bar" style={{ width: `${productivity}%`, height: '100%', background: 'var(--secondary)', borderRadius: '3px', boxShadow: '0 0 10px rgba(65, 238, 130, 0.5)', transition: 'width 0.8s ease-out' }}></div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
             </motion.section>
 
             {/* Main Content Area */}
@@ -257,7 +282,20 @@ function Dashboard() {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {tasks.length === 0 ? (
+                  {isLoading ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {[1, 2, 3, 4].map(idx => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
+                          <SkeletonCircle size="40px" />
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <Skeleton width="60%" height="16px" borderRadius="4px" />
+                            <Skeleton width="40%" height="12px" borderRadius="4px" />
+                          </div>
+                          <Skeleton width="50px" height="12px" borderRadius="4px" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : tasks.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--on-surface-variant)' }}>
                       <FiCheckCircle size={32} style={{ opacity: 0.3, marginBottom: '8px', display: 'block', margin: '0 auto 8px' }} />
                       <p style={{ margin: 0, fontSize: '14px' }}>No recent activity yet.</p>
@@ -286,9 +324,13 @@ function Dashboard() {
                               <span style={{ color: 'var(--primary)', fontWeight: 500 }}>{task.title}</span>
                               {task.status && <> &mdash; <span style={{ textTransform: 'capitalize' }}>{task.status}</span></>}
                             </p>
-                            {task.assignedTo?.name && (
+                            {(Array.isArray(task.assignedTo) ? task.assignedTo.length > 0 : task.assignedTo?.name) && (
                               <p style={{ margin: '2px 0 0', fontSize: '13px', color: 'var(--on-surface-variant)' }}>
-                                Assigned to <strong style={{ color: 'var(--on-surface)' }}>{task.assignedTo.name}</strong>
+                                Assigned to <strong style={{ color: 'var(--on-surface)' }}>
+                                  {Array.isArray(task.assignedTo)
+                                    ? task.assignedTo.map(a => (typeof a === 'object' ? a.name || a.username : a)).filter(Boolean).join(", ")
+                                    : (task.assignedTo.name || task.assignedTo.username || task.assignedTo)}
+                                </strong>
                               </p>
                             )}
                             <span style={{ fontSize: '12px', color: 'var(--outline)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>

@@ -22,13 +22,15 @@ export const login = async (req, res) => {
 
 export const register = async (req, res) => {
   try {
-    const { name, username, email, password, role } = req.body;
+    const { name, username, email, password, role, team, teamName } = req.body;
+    const selectedTeam = team || teamName || "";
     const data = await registrationService(
       name,
       username,
       email,
       password,
-      role
+      role,
+      selectedTeam
     );
     return res.status(200).json({
       success: true,

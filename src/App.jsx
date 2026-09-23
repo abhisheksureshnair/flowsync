@@ -11,9 +11,11 @@ import Settings from "./pages/Settings";
 import Calendar from "./components/Calender/Calendar";
 import AIAssist from "./pages/AIAssist";
 import socket from "./socket/socket";
+import { initTheme } from "./utils/theme";
 
 function App() {
   useEffect(() => {
+    initTheme();
     const userId = localStorage.getItem("user_id");
     if (userId) {
       socket.connect();

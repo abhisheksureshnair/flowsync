@@ -34,6 +34,17 @@ const userSchema = new mongoose.Schema(
       default: "Member",
     },
 
+    team: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    teamId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Team",
+    },
+
     profileImage: {
       type: String,
       default: "",

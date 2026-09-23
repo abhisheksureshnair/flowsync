@@ -3,7 +3,7 @@ import Sidebar from "../components/layout/Sidebar";
 import Modal from "../components/ui/Modal";
 import Toast from "../components/ui/Toast";
 import "../styles/global.css";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import {
   FiSearch,
@@ -19,56 +19,27 @@ import {
 import { getChat, fetchChat as fetchChatApi } from "../api/chatApi";
 import { allUser } from "../api/userApi";
 import socket from "../socket/socket";
+import { ChatDmSkeleton, ChatMessageSkeleton } from "../components/ui/Skeleton";
 
 const messageVariants = {
   hidden: { y: 10, opacity: 0, scale: 0.95 },
   visible: { y: 0, opacity: 1, scale: 1, transition: { type: "spring", stiffness: 300, damping: 24 } }
 };
 
-const INITIAL_CHANNELS = [
-  { id: "c1", name: "general", badge: 0 },
-  { id: "c2", name: "design-sync", badge: 0 },
-  { id: "c3", name: "engineering", badge: 0 },
-  { id: "c4", name: "marketing", badge: 12 }
-];
+const INITIAL_CHANNELS = [];
 
-const INITIAL_MESSAGES = {
-  "c2": [
-    {
-      id: "msg-1",
-      sender: "Marcus Thorne",
-      time: "10:42 AM",
-      avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=60&q=80",
-      content: "Hey team! I've uploaded the latest high-fidelity wireframes for the user dashboard. Let me know what you think about the new glassmorphic widgets.",
-      self: false
-    },
-    {
-      id: "msg-2",
-      sender: "Alex Rivera",
-      time: "10:45 AM",
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&q=80",
-      content: "Checking them out now. The luminescent borders look incredible. It really helps with the depth hierarchy!",
-      self: true
-    },
-    {
-      id: "msg-3",
-      sender: "Sarah Chen",
-      time: "10:50 AM",
-      avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=60&q=80",
-      content: "Agreed. Do we need to update the CSS tokens for the new primary glow color before merging?",
-      self: false
-    }
-  ]
-};
+const INITIAL_MESSAGES = {};
 
 function ChatScreen() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [inputText, setInputText] = useState("");
 
   // State
   const [channels, setChannels] = useState(INITIAL_CHANNELS);
-  const [activeChannelId, setActiveChannelId] = useState("c2");
+  const [activeChannelId, setActiveChannelId] = useState(null);
   const [messagesData, setMessagesData] = useState(INITIAL_MESSAGES);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [isAddChannelOpen, setAddChannelOpen] = useState(false);
   const [newChannelName, setNewChannelName] = useState("");
@@ -76,8 +47,18 @@ function ChatScreen() {
   const [toastType, setToastType] = useState("success");
 
   const [users, setUsers] = useState([]);
-  const [activeDMUserId, setActiveDMUserId] = useState(null);
+  const [activeDMUserId, setActiveDMUserId] = useState(() => {
+    return location.state?.userId || location.state?.activeDMUserId || null;
+  });
   const [allChats, setAllChats] = useState([]);
+
+  useEffect(() => {
+    const targetUserId = location.state?.userId || location.state?.activeDMUserId;
+    if (targetUserId) {
+      setActiveDMUserId(targetUserId);
+      setActiveChannelId(null);
+    }
+  }, [location.state]);
 
   const chatContainerRef = useRef(null);
 
@@ -113,8 +94,8 @@ function ChatScreen() {
         id: chat._id,
         sender: isSelf ? "You" : (senderUser?.name || senderUser?.username || "Other"),
         time: formatTime(chat.createdAt),
-        avatar: isSelf ? (currentUser.profileImage || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&q=80") :
-          (senderUser?.profileImage || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=60&q=80"),
+        avatar: isSelf ? (currentUser.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(currentUser.name || currentUser.username || "You")}`) :
+          (senderUser?.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(senderUser?.name || senderUser?.username || "User")}`),
         content: chat.message,
         self: isSelf
       };
@@ -133,30 +114,39 @@ function ChatScreen() {
   }, [currentMessages]);
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    let isMounted = true;
+    const initChat = async () => {
+      setIsLoading(true);
       try {
-        const response = await allUser();
-        if (response && response.status === 200) {
-          setUsers(response.data.users || []);
-        }
-      } catch (error) {
-        console.error("Error fetching users:", error);
+        await Promise.allSettled([
+          (async () => {
+            try {
+              const response = await allUser();
+              if (response && response.status === 200 && isMounted) {
+                setUsers(response.data.users || []);
+              }
+            } catch (error) {
+              console.error("Error fetching users:", error);
+            }
+          })(),
+          (async () => {
+            try {
+              const response = await getChat();
+              if (response && response.status === 200 && isMounted) {
+                setAllChats(response.data.data || []);
+              }
+            } catch (error) {
+              console.error("Error fetching chats:", error);
+            }
+          })()
+        ]);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
     };
 
-    const fetchChat = async () => {
-      try {
-        const response = await getChat();
-        if (response && response.status === 200) {
-          setAllChats(response.data.data || []);
-        }
-      } catch (error) {
-        console.error("Error fetching chats:", error);
-      }
-    };
-
-    fetchUsers();
-    fetchChat();
+    initChat();
+    return () => { isMounted = false; };
   }, []);
 
   const sendMessage = async (data) => {
@@ -193,9 +183,9 @@ function ChatScreen() {
     } else {
       const newMsg = {
         id: `msg-${Date.now()}`,
-        sender: "Alex Rivera",
+        sender: currentUser.name || currentUser.username || "You",
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&q=80",
+        avatar: currentUser.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(currentUser.name || currentUser.username || "You")}`,
         content: inputText,
         self: true
       };
@@ -339,40 +329,48 @@ function ChatScreen() {
 
               <h4 style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--outline)', margin: '24px 8px 8px 8px', fontWeight: 600 }}>Direct Messages</h4>
 
-              {otherUsers.map(user => {
-                const userId = user._id || user.id;
-                const isActive = userId === activeDMUserId;
-                return (
-                  <button
-                    key={userId}
-                    onClick={() => selectDMUser(userId)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      background: isActive ? 'rgba(91, 140, 255, 0.1)' : 'transparent',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: isActive ? 'var(--primary)' : 'var(--on-surface-variant)',
-                      width: '100%',
-                      textAlign: 'left',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <div style={{ position: 'relative' }}>
-                      <img
-                        src={user.profileImage || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=60&q=80"}
-                        alt={user.username}
-                        style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }}
-                      />
-                      <span style={{ position: 'absolute', bottom: 0, right: 0, width: '8px', height: '8px', background: 'var(--secondary)', borderRadius: '50%', border: '2px solid var(--surface-low)' }}></span>
-                    </div>
-                    <span style={{ fontSize: '15px', fontWeight: isActive ? 600 : 500 }}>{user.name || user.username}</span>
-                  </button>
-                );
-              })}
+              {isLoading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {[1, 2, 3, 4].map(idx => (
+                    <ChatDmSkeleton key={idx} />
+                  ))}
+                </div>
+              ) : (
+                otherUsers.map(user => {
+                  const userId = user._id || user.id;
+                  const isActive = userId === activeDMUserId;
+                  return (
+                    <button
+                      key={userId}
+                      onClick={() => selectDMUser(userId)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        background: isActive ? 'rgba(91, 140, 255, 0.1)' : 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: isActive ? 'var(--primary)' : 'var(--on-surface-variant)',
+                        width: '100%',
+                        textAlign: 'left',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <div style={{ position: 'relative' }}>
+                        <img
+                          src={user.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name || user.username || "User")}`}
+                          alt={user.username}
+                          style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }}
+                        />
+                        <span style={{ position: 'absolute', bottom: 0, right: 0, width: '8px', height: '8px', background: 'var(--secondary)', borderRadius: '50%', border: '2px solid var(--surface-low)' }}></span>
+                      </div>
+                      <span style={{ fontSize: '15px', fontWeight: isActive ? 600 : 500 }}>{user.name || user.username}</span>
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
 
@@ -384,7 +382,7 @@ function ChatScreen() {
                 <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {activeDMUserId ? (
                     <>
-                      <img src={activeDMUser?.profileImage || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=60&q=80"} alt={activeDMUser?.name} style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />
+                      <img src={activeDMUser?.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(activeDMUser?.name || activeDMUser?.username || "User")}`} alt={activeDMUser?.name} style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />
                       <span>{activeDMUser?.name || activeDMUser?.username}</span>
                     </>
                   ) : (
@@ -400,9 +398,9 @@ function ChatScreen() {
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <div style={{ display: 'flex' }}>
-                  <img src={currentUser?.profileImage || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=60&q=80"} alt="You" style={{ width: '32px', height: '32px', borderRadius: '50%', border: '2px solid var(--surface)', marginLeft: '-8px' }} />
+                  <img src={currentUser?.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(currentUser?.name || currentUser?.username || "You")}`} alt="You" style={{ width: '32px', height: '32px', borderRadius: '50%', border: '2px solid var(--surface)', marginLeft: '-8px' }} />
                   {activeDMUserId && (
-                    <img src={activeDMUser?.profileImage || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=60&q=80"} alt={activeDMUser?.name} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '2px solid var(--surface)', marginLeft: '-8px' }} />
+                    <img src={activeDMUser?.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(activeDMUser?.name || activeDMUser?.username || "User")}`} alt={activeDMUser?.name} style={{ width: '32px', height: '32px', borderRadius: '50%', border: '2px solid var(--surface)', marginLeft: '-8px' }} />
                   )}
                 </div>
                 <button className="icon-btn" onClick={() => { setToastMsg("Chat settings"); setToastType("info"); }}><FiMoreVertical size={20} /></button>
@@ -410,7 +408,14 @@ function ChatScreen() {
             </div>
 
             <div ref={chatContainerRef} className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              {currentMessages.length === 0 ? (
+              {isLoading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <ChatMessageSkeleton isSelf={false} />
+                  <ChatMessageSkeleton isSelf={true} />
+                  <ChatMessageSkeleton isSelf={false} />
+                  <ChatMessageSkeleton isSelf={true} />
+                </div>
+              ) : currentMessages.length === 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--on-surface-variant)' }}>
                   <FiMessageCircle size={48} style={{ opacity: 0.2, marginBottom: '16px' }} />
                   <p>

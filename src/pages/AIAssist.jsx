@@ -25,10 +25,12 @@ import {
   FiMessageSquare
 } from "react-icons/fi";
 import flowAiAvatar from "../assets/flow-ai-avatar.png";
+import flowsyncIcon from "../assets/flowsync-icon.png";
 import { addModel, getAiAssistence, fetchAIModels, messageAI } from "../api/aiassistenceApi";
 import { getUserTask } from "../api/taskApi";
 import LiquidEther from "../components/ui/LiquidEther";
 import RippleGrid from "../components/ui/RippleGrid";
+import { Skeleton, SkeletonCircle, SkeletonText } from "../components/ui/Skeleton";
 
 const generateMsgId = (prefix) => `${prefix}-${Date.now()}`;
 
@@ -482,22 +484,22 @@ function AIAssist() {
               <div className="ai-stats-row" style={{ display: 'flex', alignItems: 'center' }}>
                 <div className="ai-stat-mini-card">
                   <span className="label">Active</span>
-                  <span className="val">{isLoading ? "—" : localSummary.activeCount}</span>
+                  <span className="val">{isLoading ? <Skeleton width="28px" height="18px" borderRadius="4px" /> : localSummary.activeCount}</span>
                 </div>
                 <div className="ai-stat-mini-card" style={{ borderColor: localSummary.overdueCount > 0 ? 'rgba(255,114,94,0.3)' : '' }}>
                   <span className="label" style={{ color: localSummary.overdueCount > 0 ? 'var(--error)' : '' }}>Overdue</span>
                   <span className="val" style={{ color: localSummary.overdueCount > 0 ? 'var(--error)' : '' }}>
-                    {isLoading ? "—" : localSummary.overdueCount}
+                    {isLoading ? <Skeleton width="28px" height="18px" borderRadius="4px" /> : localSummary.overdueCount}
                   </span>
                 </div>
                 <div className="ai-stat-mini-card">
                   <span className="label">Due Today</span>
-                  <span className="val">{isLoading ? "—" : localSummary.dueTodayCount}</span>
+                  <span className="val">{isLoading ? <Skeleton width="28px" height="18px" borderRadius="4px" /> : localSummary.dueTodayCount}</span>
                 </div>
                 <div className="ai-stat-mini-card">
                   <span className="label">Workload</span>
                   <span className="val" style={{ fontSize: '20px', fontWeight: 800 }}>
-                    {isLoading ? "—" : formatWorkload(localSummary.workloadMinutes)}
+                    {isLoading ? <Skeleton width="54px" height="18px" borderRadius="4px" /> : formatWorkload(localSummary.workloadMinutes)}
                   </span>
                 </div>
                 <button
@@ -598,7 +600,17 @@ function AIAssist() {
                   </div>
 
                   {isLoading ? (
-                    <div style={{ padding: '24px 0', textAlign: 'center' }}>Loading analysis...</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '16px' }}>
+                      <Skeleton width="65%" height="26px" borderRadius="6px" />
+                      <div style={{ display: 'flex', gap: '12px' }}>
+                        <Skeleton width="110px" height="16px" borderRadius="4px" />
+                        <Skeleton width="120px" height="16px" borderRadius="4px" />
+                      </div>
+                      <div className="ai-quote-box" style={{ minHeight: '64px' }}>
+                        <SkeletonText lines={2} gap="8px" lastLineWidth="70%" />
+                      </div>
+                      <Skeleton width="140px" height="42px" borderRadius="12px" />
+                    </div>
                   ) : aiData?.recommendedTask ? (
                     <>
                       <h2 style={{ margin: '16px 0 8px', fontSize: '24px', fontWeight: 700 }}>
@@ -648,7 +660,20 @@ function AIAssist() {
                   </div>
 
                   {isLoading ? (
-                    <div style={{ padding: '24px 0', textAlign: 'center' }}>Loading queue...</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '8px 0' }}>
+                      {[1, 2, 3].map(idx => (
+                        <div key={idx} className="ai-queue-item">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
+                            <SkeletonCircle size="24px" />
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <Skeleton width="70%" height="16px" borderRadius="4px" />
+                              <Skeleton width="40%" height="12px" borderRadius="4px" />
+                            </div>
+                          </div>
+                          <Skeleton width="60px" height="20px" borderRadius="6px" />
+                        </div>
+                      ))}
+                    </div>
                   ) : !aiData?.priorityQueue || aiData.priorityQueue.length === 0 ? (
                     <p style={{ margin: 0, fontSize: '14px', color: 'var(--outline)', textAlign: 'center', padding: '16px 0' }}>
                       No tasks in the queue.
@@ -700,9 +725,14 @@ function AIAssist() {
                 {isChatOpen && (
                   <motion.div layout layoutId="ai-upcoming-deadlines" whileHover={{ y: -4 }} className="ai-card-glow">
                     <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: 700 }}>Upcoming Deadlines</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {isLoading ? (
-                        <div style={{ padding: '12px 0', textAlign: 'center' }}>Loading deadlines...</div>
+                        [1, 2, 3].map(idx => (
+                          <div key={idx} className="deadline-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Skeleton width="55%" height="16px" borderRadius="4px" />
+                            <Skeleton width="70px" height="14px" borderRadius="4px" />
+                          </div>
+                        ))
                       ) : !aiData?.priorityQueue || aiData.priorityQueue.length === 0 ? (
                         <p style={{ margin: 0, fontSize: '13px', color: 'var(--outline)' }}>No upcoming deadlines.</p>
                       ) : (
@@ -724,7 +754,13 @@ function AIAssist() {
                   <motion.div layout layoutId="ai-completion-analytics" whileHover={{ y: -4 }} className="ai-card-glow">
                     <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: 700 }}>Completion Analytics</h3>
                     {isLoading ? (
-                      <div style={{ padding: '16px 0', textAlign: 'center' }}>Loading metrics...</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '20px', margin: '16px 0' }}>
+                        <SkeletonCircle size="70px" />
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <Skeleton width="110px" height="22px" borderRadius="4px" />
+                          <Skeleton width="140px" height="14px" borderRadius="4px" />
+                        </div>
+                      </div>
                     ) : (
                       <>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', margin: '16px 0' }}>
@@ -770,7 +806,13 @@ function AIAssist() {
                     <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: 700 }}>⚠️ Risk Analysis</h3>
 
                     {isLoading ? (
-                      <div style={{ padding: '16px 0', textAlign: 'center' }}>Loading risk report...</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Skeleton width="60%" height="16px" borderRadius="4px" />
+                          <Skeleton width="60px" height="18px" borderRadius="6px" />
+                        </div>
+                        <Skeleton width="100%" height="40px" borderRadius="8px" />
+                      </div>
                     ) : aiData?.riskAnalysis ? (
                       <>
                         <div className="deadline-item" style={{ border: 'none' }}>
@@ -827,7 +869,7 @@ function AIAssist() {
                       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
                         <div className="ai-chat-drawer-header">
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <FiCpu size={20} color="var(--primary)" />
+                            <img src={flowsyncIcon} alt="FlowSync" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
                             <span style={{ fontWeight: 700 }}>Flow AI Assistant</span>
                           </div>
                           <button className="icon-btn" onClick={() => setIsChatOpen(false)} type="button">
@@ -892,9 +934,14 @@ function AIAssist() {
                 {!isChatOpen && (
                   <motion.div layout layoutId="ai-upcoming-deadlines" whileHover={{ y: -4 }} className="ai-card-glow">
                     <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: 700 }}>Upcoming Deadlines</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {isLoading ? (
-                        <div style={{ padding: '12px 0', textAlign: 'center' }}>Loading deadlines...</div>
+                        [1, 2, 3].map(idx => (
+                          <div key={idx} className="deadline-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Skeleton width="55%" height="16px" borderRadius="4px" />
+                            <Skeleton width="70px" height="14px" borderRadius="4px" />
+                          </div>
+                        ))
                       ) : !aiData?.priorityQueue || aiData.priorityQueue.length === 0 ? (
                         <p style={{ margin: 0, fontSize: '13px', color: 'var(--outline)' }}>No upcoming deadlines.</p>
                       ) : (
@@ -916,7 +963,13 @@ function AIAssist() {
                   <motion.div layout layoutId="ai-completion-analytics" whileHover={{ y: -4 }} className="ai-card-glow">
                     <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: 700 }}>Completion Analytics</h3>
                     {isLoading ? (
-                      <div style={{ padding: '16px 0', textAlign: 'center' }}>Loading metrics...</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '20px', margin: '16px 0' }}>
+                        <SkeletonCircle size="70px" />
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <Skeleton width="110px" height="22px" borderRadius="4px" />
+                          <Skeleton width="140px" height="14px" borderRadius="4px" />
+                        </div>
+                      </div>
                     ) : (
                       <>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', margin: '16px 0' }}>
@@ -962,7 +1015,13 @@ function AIAssist() {
                     <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: 700 }}>⚠️ Risk Analysis</h3>
 
                     {isLoading ? (
-                      <div style={{ padding: '16px 0', textAlign: 'center' }}>Loading risk report...</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Skeleton width="60%" height="16px" borderRadius="4px" />
+                          <Skeleton width="60px" height="18px" borderRadius="6px" />
+                        </div>
+                        <Skeleton width="100%" height="40px" borderRadius="8px" />
+                      </div>
                     ) : aiData?.riskAnalysis ? (
                       <>
                         <div className="deadline-item" style={{ border: 'none' }}>
@@ -1000,9 +1059,9 @@ function AIAssist() {
                   <FiZap size={16} />
                   <span style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase' }}>Urgency Alert</span>
                 </div>
-                <p style={{ margin: 0, fontSize: '13px', color: 'var(--on-surface-variant)', lineHeight: 1.5 }}>
-                  {isLoading ? "Loading insight..." : aiData?.insights?.[0] || "No critical alerts."}
-                </p>
+                <div style={{ margin: 0, fontSize: '13px', color: 'var(--on-surface-variant)', lineHeight: 1.5 }}>
+                  {isLoading ? <Skeleton width="90%" height="14px" borderRadius="4px" style={{ marginTop: '6px' }} /> : (aiData?.insights?.[0] || "No critical alerts.")}
+                </div>
               </div>
 
               <div className="ai-insight-card wellness">
@@ -1010,9 +1069,9 @@ function AIAssist() {
                   <FiCoffee size={16} />
                   <span style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase' }}>Priority Insight</span>
                 </div>
-                <p style={{ margin: 0, fontSize: '13px', color: 'var(--on-surface-variant)', lineHeight: 1.5 }}>
-                  {isLoading ? "Loading insight..." : aiData?.insights?.[1] || "Workload optimized."}
-                </p>
+                <div style={{ margin: 0, fontSize: '13px', color: 'var(--on-surface-variant)', lineHeight: 1.5 }}>
+                  {isLoading ? <Skeleton width="90%" height="14px" borderRadius="4px" style={{ marginTop: '6px' }} /> : (aiData?.insights?.[1] || "Workload optimized.")}
+                </div>
               </div>
 
               <div className="ai-insight-card prediction">
@@ -1020,9 +1079,9 @@ function AIAssist() {
                   <FiClock size={16} />
                   <span style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase' }}>Workload Warning</span>
                 </div>
-                <p style={{ margin: 0, fontSize: '13px', color: 'var(--on-surface-variant)', lineHeight: 1.5 }}>
-                  {isLoading ? "Loading insight..." : aiData?.insights?.[2] || "Velocity predicting safe status."}
-                </p>
+                <div style={{ margin: 0, fontSize: '13px', color: 'var(--on-surface-variant)', lineHeight: 1.5 }}>
+                  {isLoading ? <Skeleton width="90%" height="14px" borderRadius="4px" style={{ marginTop: '6px' }} /> : (aiData?.insights?.[2] || "Velocity predicting safe status.")}
+                </div>
               </div>
             </div>
           </>
@@ -1047,7 +1106,7 @@ function AIAssist() {
             >
               <div className="ai-chat-drawer-header" style={{ padding: '24px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <FiSettings size={22} color="var(--primary)" />
+                  <img src={flowsyncIcon} alt="FlowSync" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
                   <span style={{ fontWeight: 800, fontSize: '18px', letterSpacing: '-0.5px' }}>AI Configuration</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

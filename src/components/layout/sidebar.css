@@ -1,200 +1,545 @@
+/* ==========================================================================
+   FlowSync Modern SaaS Sidebar Styles
+   ========================================================================== */
+
+:root {
+  --sidebar-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+
+/* Base Container */
 .sidebar-container {
   height: 100vh;
   position: sticky;
   left: 0;
   top: 0;
-  background-color: var(--surface-low);
-  border-right: 1px solid rgba(67, 70, 83, 0.3);
+  background-color: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
   display: flex;
   flex-direction: column;
-  padding: 24px 16px;
+  padding: 16px 12px;
   z-index: 50;
-  overflow: hidden;
+  overflow-x: visible; /* Allows floating tooltips */
+  overflow-y: visible;
+  transition: width 280ms var(--sidebar-ease), padding 280ms var(--sidebar-ease);
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
+
+.sidebar-container.expanded {
+  width: 280px;
+}
+
+.sidebar-container.collapsed {
+  width: 76px;
+  padding: 16px 8px;
+}
+
+/* ==========================================================================
+   1. Brand Header
+   ========================================================================== */
 
 .brand-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 4px;
+  margin-bottom: 20px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.sidebar-container.collapsed .brand-header {
+  flex-direction: column;
+  height: auto;
+  gap: 8px;
+  padding: 0;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+.brand-identity {
+  display: flex;
+  align-items: center;
   gap: 12px;
-  margin-bottom: 40px;
-  padding: 0 8px;
+  cursor: pointer;
+  text-decoration: none;
+  border-radius: 8px;
+  padding: 2px;
+  user-select: none;
+  overflow: hidden;
 }
 
 .brand-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  object-fit: contain;
   flex-shrink: 0;
+  transition: transform 0.2s var(--sidebar-ease);
+}
+
+.brand-identity:hover .brand-logo {
+  transform: scale(1.05);
 }
 
 .brand-info {
   display: flex;
   flex-direction: column;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .brand-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--primary);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--sidebar-text-primary);
   line-height: 1.2;
+  letter-spacing: -0.01em;
 }
 
 .brand-subtitle {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--outline);
-  margin-top: 2px;
-}
-
-.nav-menu {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 16px;
-  border-radius: 12px;
-  cursor: pointer;
-  color: var(--on-surface-variant);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  background: transparent;
-}
-
-.nav-item:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--on-surface);
-  transform: translateX(4px);
-}
-
-.nav-item.active {
-  background-color: rgba(91, 140, 255, 0.1);
-  color: var(--primary);
-  border-left: 4px solid var(--primary);
-  border-top-left-radius: 4px;
-  border-bottom-left-radius: 4px;
-  box-shadow: 0 0 15px rgba(91, 140, 255, 0.15);
-}
-
-.nav-icon {
-  font-size: 22px;
-  font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24;
-}
-
-.nav-item.active .nav-icon {
-  font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
-}
-
-.nav-label {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.sidebar-footer {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(67, 70, 83, 0.15);
-}
-
-.new-proj-btn {
-  width: 100%;
-  background-color: var(--primary-container, #5b8cff);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  padding: 12px;
-  font-size: 14px;
+  font-size: 9.5px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sidebar-text-muted);
+  margin-top: 1px;
+}
+
+/* Modern Panel Toggle Button */
+.header-toggle-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
   cursor: pointer;
-  box-shadow: 0 8px 16px rgba(91, 140, 255, 0.25);
-  transition: all 0.2s;
+  color: var(--sidebar-text-muted);
+  transition: all 0.2s var(--sidebar-ease);
+  flex-shrink: 0;
 }
 
-.new-proj-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 20px rgba(91, 140, 255, 0.35);
+.header-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: var(--sidebar-text-primary);
 }
 
-.new-proj-btn:active {
+.sidebar-container.collapsed .header-toggle-btn {
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-container.collapsed .header-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--sidebar-text-primary);
+}
+
+/* ==========================================================================
+   2. Navigation Sections & Grouping
+   ========================================================================== */
+
+.nav-sections-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  overflow-x: visible;
+  padding-right: 2px;
+}
+
+.nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.nav-section-title {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sidebar-text-muted);
+  padding: 6px 12px 2px;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.nav-section-items {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* ==========================================================================
+   3. Navigation Items
+   ========================================================================== */
+
+.nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 48px;
+  border-radius: 12px;
+  cursor: pointer;
+  color: var(--sidebar-text-muted);
+  background: transparent;
+  transition: background-color 180ms var(--sidebar-ease), color 180ms var(--sidebar-ease);
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.sidebar-container.expanded .nav-item {
+  padding: 0 14px;
+  gap: 14px;
+  width: 100%;
+}
+
+.sidebar-container.collapsed .nav-item {
+  width: 46px;
+  height: 46px;
+  margin: 0 auto;
+  justify-content: center;
+  padding: 0;
+}
+
+.nav-item:hover {
+  background-color: var(--sidebar-hover-bg);
+  color: var(--sidebar-text-primary);
+}
+
+.nav-item:hover .nav-icon-wrapper {
+  color: var(--sidebar-primary-blue);
+}
+
+/* Active State */
+.nav-item.active {
+  background-color: var(--sidebar-active-bg);
+  color: var(--sidebar-text-primary);
+  box-shadow: 0 0 16px rgba(91, 140, 255, 0.08);
+}
+
+.nav-item.active .nav-icon-wrapper {
+  color: var(--sidebar-primary-blue);
+}
+
+.nav-item.active .nav-label {
+  font-weight: 600;
+  color: var(--sidebar-text-primary);
+}
+
+/* 3px Active Indicator Bar */
+.active-indicator {
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3.5px;
+  border-radius: 0 4px 4px 0;
+  background-color: var(--sidebar-primary-blue);
+  box-shadow: 0 0 10px rgba(91, 140, 255, 0.7);
+}
+
+.sidebar-container.collapsed .active-indicator {
+  left: -4px;
+  height: 24px;
+  top: calc(50% - 12px);
+  bottom: auto;
+  width: 3px;
+}
+
+/* Icon & Label */
+.nav-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: var(--sidebar-text-muted);
+  transition: color 180ms var(--sidebar-ease), transform 180ms var(--sidebar-ease);
+  flex-shrink: 0;
+}
+
+.nav-item:hover .nav-icon-wrapper {
+  transform: scale(1.04);
+}
+
+.nav-label-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.nav-label {
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: inherit;
+}
+
+/* ==========================================================================
+   4. Flow AI Special Item
+   ========================================================================== */
+
+.nav-item.special-ai .ai-icon-wrapper {
+  color: var(--sidebar-ai-accent);
+  filter: drop-shadow(0 0 5px rgba(124, 92, 255, 0.35));
+}
+
+.nav-item.special-ai:hover .ai-icon-wrapper,
+.nav-item.special-ai.active .ai-icon-wrapper {
+  color: #9D84FF;
+  filter: drop-shadow(0 0 8px rgba(124, 92, 255, 0.55));
+}
+
+.special-badge {
+  background: rgba(124, 92, 255, 0.14);
+  border: 1px solid rgba(124, 92, 255, 0.32);
+  color: var(--sidebar-ai-text);
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  margin-left: auto;
+}
+
+/* ==========================================================================
+   5. Spacer & Footer
+   ========================================================================== */
+
+.sidebar-spacer {
+  flex: 1;
+  min-height: 12px;
+}
+
+.sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--sidebar-border);
+  flex-shrink: 0;
+}
+
+/* New Project Button */
+.new-project-btn {
+  position: relative;
+  background: linear-gradient(135deg, #5B8CFF 0%, #4671E5 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 12px;
+  height: 48px;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(91, 140, 255, 0.28);
+  transition: all 0.2s var(--sidebar-ease);
+  overflow: visible;
+}
+
+.sidebar-container.expanded .new-project-btn {
+  width: 100%;
+  padding: 0 16px;
+  gap: 10px;
+  justify-content: center;
+}
+
+.sidebar-container.collapsed .new-project-btn {
+  width: 46px;
+  height: 46px;
+  margin: 0 auto;
+  padding: 0;
+  justify-content: center;
+}
+
+.new-project-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(91, 140, 255, 0.4);
+  filter: brightness(1.05);
+}
+
+.new-project-btn:active {
   transform: translateY(0);
 }
 
-.profile-block {
+.new-project-icon {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-.profile-block:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+.new-project-text {
+  white-space: nowrap;
+}
+
+/* User Profile Card */
+.user-profile-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 48px;
+  border-radius: 12px;
+  cursor: pointer;
+  background: transparent;
+  transition: background-color 0.2s var(--sidebar-ease);
+  user-select: none;
+}
+
+.sidebar-container.expanded .user-profile-card {
+  padding: 0 10px;
+  gap: 12px;
+  width: 100%;
+}
+
+.sidebar-container.collapsed .user-profile-card {
+  width: 46px;
+  height: 46px;
+  margin: 0 auto;
+  justify-content: center;
+  padding: 0;
+}
+
+.user-profile-card:hover {
+  background-color: rgba(255, 255, 255, 0.04);
 }
 
 .avatar-wrapper {
   position: relative;
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
 }
 
-.profile-avatar {
+.user-avatar {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  object-cover: cover;
-  border: 1.5px solid var(--outline-variant);
+  object-fit: cover;
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
 }
 
-.status-dot {
+.status-indicator {
   position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 10px;
-  height: 10px;
+  bottom: -1px;
+  right: -1px;
+  width: 9.5px;
+  height: 9.5px;
   border-radius: 50%;
-  border: 2px solid var(--surface-low);
+  border: 2px solid var(--sidebar-bg);
 }
 
-.status-dot.active {
-  background-color: var(--secondary);
+.status-indicator.active {
+  background-color: #00C896;
 }
 
-.profile-info {
+.profile-details {
   display: flex;
   flex-direction: column;
   flex: 1;
   overflow: hidden;
+  white-space: nowrap;
 }
 
 .profile-name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--on-surface);
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  color: var(--sidebar-text-primary);
+  line-height: 1.2;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .profile-role {
-  font-size: 10px;
-  color: var(--on-surface-variant);
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  font-size: 11px;
+  color: var(--sidebar-text-muted);
+  margin-top: 2px;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.settings-gear {
-  color: var(--on-surface-variant);
-  font-size: 18px;
+.profile-logout-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--sidebar-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s var(--sidebar-ease);
+  flex-shrink: 0;
 }
+
+.profile-logout-btn:hover {
+  background: rgba(255, 100, 100, 0.12);
+  border-color: rgba(255, 100, 100, 0.25);
+  color: #FF7B72;
+  transform: scale(1.05);
+}
+
+/* ==========================================================================
+   6. Collapsed Floating Tooltips
+   ========================================================================== */
+
+.sidebar-tooltip {
+  position: absolute;
+  left: calc(100% + 14px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  background: #181C26;
+  border: 1px solid var(--sidebar-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.2);
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: var(--sidebar-text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms var(--sidebar-ease), transform 150ms var(--sidebar-ease);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-item:hover .sidebar-tooltip,
+.new-project-btn:hover .sidebar-tooltip,
+.user-profile-card:hover .sidebar-tooltip {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+.tooltip-badge {
+  background: rgba(124, 92, 255, 0.2);
+  color: var(--sidebar-ai-text);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.tooltip-subtext {
+  font-size: 11px;
+  color: var(--sidebar-text-muted);
+}
+

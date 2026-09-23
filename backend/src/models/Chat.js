@@ -24,6 +24,17 @@ const chatSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+    team: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    teamId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Team",
+    },
   },
   {
     timestamps: true,
