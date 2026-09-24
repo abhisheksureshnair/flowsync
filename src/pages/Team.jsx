@@ -172,13 +172,10 @@ function Team() {
       <div className="main-content">
         <header className="top-header">
           <div className="header-search">
-            <FiSearch size={18} color="var(--on-surface-variant)" />
-            <input 
-              type="text" 
-              placeholder="Search team members..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+            <FiUsers size={18} color="var(--on-surface-variant)" />
+            <span style={{ fontSize: "15px", color: "var(--on-surface-variant)", paddingLeft: "8px" }}>
+              Team Members
+            </span>
           </div>
           <div className="header-actions">
             <button className="btn-primary" onClick={() => setInviteModalOpen(true)}>
@@ -224,7 +221,32 @@ function Team() {
                 </p>
               </div>
 
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: 'var(--surface-high)',
+                  border: '1px solid var(--outline-variant)',
+                  borderRadius: '20px',
+                  padding: '6px 14px',
+                  gap: '8px'
+                }}>
+                  <FiSearch size={14} color="var(--on-surface-variant)" />
+                  <input
+                    type="text"
+                    placeholder="Filter members..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--on-surface)',
+                      fontSize: '13px',
+                      outline: 'none',
+                      width: '160px'
+                    }}
+                  />
+                </div>
                 <button className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setInviteModalOpen(true)}>
                   <FiUserPlus size={16} /> Invite Member
                 </button>

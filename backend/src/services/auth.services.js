@@ -33,6 +33,8 @@ export const loginService = async (username, password) => {
       role: user.role,
       team: user.team || "",
       teamId: user.teamId || null,
+      profileImage: user.profileImage || "",
+      bio: user.bio || "",
     },
   };
 };
@@ -105,6 +107,8 @@ export const registrationService = async (
       role: newUser.role,
       team: newUser.team,
       teamId: newUser.teamId,
+      profileImage: newUser.profileImage || "",
+      bio: newUser.bio || "",
     },
   };
 };

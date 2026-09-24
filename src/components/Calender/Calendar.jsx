@@ -570,13 +570,10 @@ export default function Calendar() {
         {/* Header matching dashboard */}
         <header className="top-header">
           <div className="header-search">
-            <FiSearch size={18} color="var(--on-surface-variant)" />
-            <input 
-              type="text" 
-              placeholder="Search schedule or tasks..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+            <FiCalendar size={18} color="var(--on-surface-variant)" />
+            <span style={{ fontSize: "15px", color: "var(--on-surface-variant)", paddingLeft: "8px" }}>
+              Calendar &amp; Schedule
+            </span>
           </div>
           
           <div className="header-actions" style={{ position: "relative" }}>
@@ -658,7 +655,34 @@ export default function Calendar() {
                   </div>
                 </div>
 
-                <div className="calendar-nav-buttons">
+                <div className="calendar-nav-buttons" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                  {/* Event Filter */}
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    background: "var(--surface-high)",
+                    border: "1px solid var(--outline-variant)",
+                    borderRadius: "20px",
+                    padding: "4px 12px",
+                    gap: "6px"
+                  }}>
+                    <FiSearch size={13} color="var(--on-surface-variant)" />
+                    <input
+                      type="text"
+                      placeholder="Filter events..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        color: "var(--on-surface)",
+                        fontSize: "12px",
+                        outline: "none",
+                        width: "120px"
+                      }}
+                    />
+                  </div>
+
                   {/* View Toggles */}
                   <div className="view-toggle-group">
                     {["Month", "Week", "Day", "Agenda"].map(view => (

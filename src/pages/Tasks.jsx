@@ -6,7 +6,7 @@ import "../styles/global.css";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  FiSearch,
+  FiCheckSquare,
   FiBell,
   FiPlus,
   FiCheckCircle,
@@ -382,8 +382,10 @@ function Tasks() {
       <div className="main-content">
         <header className="top-header">
           <div className="header-search">
-            <FiSearch size={18} color="var(--on-surface-variant)" />
-            <input type="text" placeholder="Search tasks, docs, or people..." />
+            <FiCheckSquare size={18} color="var(--on-surface-variant)" />
+            <span style={{ fontSize: "15px", color: "var(--on-surface-variant)", paddingLeft: "8px" }}>
+              Tasks &amp; Projects
+            </span>
           </div>
           <div className="header-actions" style={{ position: 'relative' }}>
             <button className="btn-secondary" onClick={() => setQuickActionsOpen(true)}>Quick Actions</button>

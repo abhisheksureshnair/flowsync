@@ -27,3 +27,7 @@ dist-ssr
 .env
 .env.*
 backend/.env
+
+# Uploads
+backend/uploads/*
+!backend/uploads/**/.gitkeep

@@ -11,10 +11,15 @@ import {
   FiPlus,
   FiHash,
   FiMessageCircle,
+  FiMessageSquare,
   FiMoreVertical,
   FiSend,
   FiPaperclip,
-  FiSmile
+  FiSmile,
+  FiUsers,
+  FiCheck,
+  FiX,
+  FiChevronRight
 } from "react-icons/fi";
 import { getChat, fetchChat as fetchChatApi } from "../api/chatApi";
 import { allUser } from "../api/userApi";
@@ -52,6 +57,16 @@ function ChatScreen() {
   });
   const [allChats, setAllChats] = useState([]);
 
+  // ── New Conversation picker state ──────────────────────────────
+  const [showPicker, setShowPicker]         = useState(false);
+  const [pickerSearch, setPickerSearch]     = useState("");
+  const [pickerMode, setPickerMode]         = useState("dm"); // "dm" | "group"
+  const [groupName, setGroupName]           = useState("");
+  const [groupMembers, setGroupMembers]     = useState([]); // array of user ids
+  const [groups, setGroups]                 = useState([]); // local group channels
+  const [activeGroupId, setActiveGroupId]   = useState(null);
+  const pickerRef                           = useRef(null);
+
   useEffect(() => {
     const targetUserId = location.state?.userId || location.state?.activeDMUserId;
     if (targetUserId) {
@@ -63,10 +78,19 @@ function ChatScreen() {
   const chatContainerRef = useRef(null);
 
   const activeChannel = activeChannelId ? channels.find(c => c.id === activeChannelId) : null;
-  const activeDMUser = activeDMUserId ? users.find(u => (u._id || u.id) === activeDMUserId) : null;
-  const currentUser = JSON.parse(localStorage.getItem("user")) || {};
+  const activeDMUser  = activeDMUserId  ? users.find(u => (u._id || u.id) === activeDMUserId) : null;
+  const currentUser   = JSON.parse(localStorage.getItem("user")) || {};
   const currentUserId = currentUser.id || currentUser._id;
-  const otherUsers = users.filter(u => (u._id || u.id) !== currentUserId);
+  const otherUsers    = users.filter(u => (u._id || u.id) !== currentUserId);
+  const activeGroup   = activeGroupId ? groups.find(g => g.id === activeGroupId) : null;
+
+  // Users already in an active DM in the sidebar (to show as "already added")
+  const dmUserIds = new Set(otherUsers.map(u => u._id || u.id)); // all shown already
+
+  // Filtered picker list
+  const pickerUsers = otherUsers.filter(u =>
+    !pickerSearch || (u.name || u.username || "").toLowerCase().includes(pickerSearch.toLowerCase())
+  );
 
   const formatTime = (isoString) => {
     if (!isoString) return "";
@@ -173,6 +197,10 @@ function ChatScreen() {
   const handleSend = (e) => {
     e.preventDefault();
     if (!inputText.trim()) return;
+    // Guard: nothing selected
+    if (!activeDMUserId && !activeChannelId) return;
+    // Guard: block self-message
+    if (activeDMUserId && activeDMUserId === currentUserId) return;
 
     if (activeDMUserId) {
       const payload = {
@@ -223,12 +251,57 @@ function ChatScreen() {
   const selectDMUser = (id) => {
     setActiveDMUserId(id);
     setActiveChannelId(null);
+    setActiveGroupId(null);
+    setShowPicker(false);
+  };
+
+  const selectGroup = (id) => {
+    setActiveGroupId(id);
+    setActiveDMUserId(null);
+    setActiveChannelId(null);
+  };
+
+  // Close picker when clicking outside
+  useEffect(() => {
+    const handler = (e) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target)) {
+        setShowPicker(false);
+      }
+    };
+    if (showPicker) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showPicker]);
+
+  const toggleGroupMember = (id) => {
+    setGroupMembers(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const createGroup = () => {
+    if (!groupName.trim() || groupMembers.length === 0) return;
+    const memberObjs = groupMembers.map(id => users.find(u => (u._id || u.id) === id)).filter(Boolean);
+    const newGroup = {
+      id: `g-${Date.now()}`,
+      name: groupName.trim(),
+      members: memberObjs,
+      messages: []
+    };
+    setGroups(prev => [...prev, newGroup]);
+    setActiveGroupId(newGroup.id);
+    setActiveDMUserId(null);
+    setActiveChannelId(null);
+    setShowPicker(false);
+    setGroupName("");
+    setGroupMembers([]);
+    setPickerMode("dm");
+    setToastMsg(`Group "${newGroup.name}" created!`);
+    setToastType("success");
   };
 
   const fetchChat = async (reciver) => {
     try {
       const response = await fetchChatApi({ receiver: reciver });
-      console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@.   ", response.data)
       if (response && response.status === 200 && response.data?.success) {
         const chats = response.data.data || [];
         setAllChats(prev => {
@@ -274,8 +347,10 @@ function ChatScreen() {
 
         <header className="top-header" style={{ flexShrink: 0 }}>
           <div className="header-search">
-            <FiSearch size={18} color="var(--on-surface-variant)" />
-            <input type="text" placeholder="Search messages, files..." />
+            <FiMessageSquare size={18} color="var(--on-surface-variant)" />
+            <span style={{ fontSize: "15px", color: "var(--on-surface-variant)", paddingLeft: "8px" }}>
+              Team Chat &amp; Messages
+            </span>
           </div>
           <div className="header-actions">
             <button className="icon-btn" onClick={() => { setToastMsg("No new notifications"); setToastType("info"); }}><FiBell size={20} /></button>
@@ -287,10 +362,197 @@ function ChatScreen() {
           {/* Left Column: Channels */}
           <div className="glass-card" style={{ width: '280px', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '20px 0' }}>
             <div style={{ padding: '0 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>Channels</h3>
-              <button className="icon-btn" style={{ padding: '4px' }} onClick={() => setAddChannelOpen(true)}>
-                <FiPlus size={16} />
-              </button>
+              <h3 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>Messages</h3>
+
+              {/* ── + Button + Picker Panel ── */}
+              <div style={{ position: 'relative' }} ref={pickerRef}>
+                <button
+                  className="icon-btn"
+                  style={{ padding: '4px', background: showPicker ? 'rgba(91,140,255,0.15)' : undefined, borderRadius: '8px', color: showPicker ? 'var(--primary)' : undefined }}
+                  onClick={() => { setShowPicker(p => !p); setPickerSearch(""); setPickerMode("dm"); setGroupName(""); setGroupMembers([]); }}
+                  title="New conversation"
+                >
+                  <FiPlus size={16} />
+                </button>
+
+                <AnimatePresence>
+                  {showPicker && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                      transition={{ duration: 0.18 }}
+                      style={{
+                        position: 'absolute', top: '36px', right: 0,
+                        width: '260px',
+                        background: 'var(--surface-container)',
+                        border: '1px solid var(--outline-variant)',
+                        borderRadius: '14px',
+                        boxShadow: '0 12px 40px rgba(0,0,0,0.45)',
+                        zIndex: 200,
+                        overflow: 'hidden',
+                        display: 'flex', flexDirection: 'column'
+                      }}
+                    >
+                      {/* Header tabs */}
+                      <div style={{ display: 'flex', borderBottom: '1px solid var(--outline-variant)' }}>
+                        <button
+                          onClick={() => { setPickerMode("dm"); setGroupMembers([]); setGroupName(""); }}
+                          style={{
+                            flex: 1, padding: '10px', fontSize: '13px', fontWeight: 600,
+                            background: pickerMode === "dm" ? 'rgba(91,140,255,0.1)' : 'transparent',
+                            color: pickerMode === "dm" ? 'var(--primary)' : 'var(--on-surface-variant)',
+                            border: 'none', cursor: 'pointer',
+                            borderBottom: pickerMode === "dm" ? '2px solid var(--primary)' : '2px solid transparent',
+                            transition: 'all 0.15s'
+                          }}
+                        >
+                          Direct Message
+                        </button>
+                        <button
+                          onClick={() => setPickerMode("group")}
+                          style={{
+                            flex: 1, padding: '10px', fontSize: '13px', fontWeight: 600,
+                            background: pickerMode === "group" ? 'rgba(65,238,130,0.08)' : 'transparent',
+                            color: pickerMode === "group" ? 'var(--secondary)' : 'var(--on-surface-variant)',
+                            border: 'none', cursor: 'pointer',
+                            borderBottom: pickerMode === "group" ? '2px solid var(--secondary)' : '2px solid transparent',
+                            transition: 'all 0.15s',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                          }}
+                        >
+                          <FiUsers size={13} /> Group
+                        </button>
+                      </div>
+
+                      {/* Group name input (only in group mode) */}
+                      {pickerMode === "group" && (
+                        <div style={{ padding: '10px 12px 0' }}>
+                          <input
+                            type="text"
+                            placeholder="Group name…"
+                            value={groupName}
+                            onChange={e => setGroupName(e.target.value)}
+                            style={{
+                              width: '100%', padding: '7px 12px',
+                              background: 'rgba(255,255,255,0.05)',
+                              border: '1px solid var(--outline-variant)',
+                              borderRadius: '8px',
+                              color: 'var(--on-surface)', fontSize: '13px',
+                              outline: 'none', boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Search box */}
+                      <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <FiSearch size={14} color="var(--on-surface-variant)" />
+                        <input
+                          type="text"
+                          placeholder="Search members…"
+                          value={pickerSearch}
+                          onChange={e => setPickerSearch(e.target.value)}
+                          autoFocus
+                          style={{
+                            flex: 1, background: 'transparent', border: 'none',
+                            color: 'var(--on-surface)', fontSize: '13px', outline: 'none'
+                          }}
+                        />
+                        {pickerSearch && (
+                          <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--outline)', padding: 0 }} onClick={() => setPickerSearch("")}>
+                            <FiX size={13} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Member list */}
+                      <div className="custom-scrollbar" style={{ maxHeight: '220px', overflowY: 'auto' }}>
+                        {pickerUsers.length === 0 ? (
+                          <p style={{ margin: 0, padding: '16px', fontSize: '13px', color: 'var(--outline)', textAlign: 'center' }}>No members found</p>
+                        ) : (
+                          pickerUsers.map(u => {
+                            const uid = u._id || u.id;
+                            const isSelected = groupMembers.includes(uid);
+                            return (
+                              <button
+                                key={uid}
+                                onClick={() => {
+                                  if (pickerMode === "dm") {
+                                    selectDMUser(uid);
+                                  } else {
+                                    toggleGroupMember(uid);
+                                  }
+                                }}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: '10px',
+                                  width: '100%', padding: '9px 12px',
+                                  background: isSelected ? 'rgba(65,238,130,0.08)' : 'transparent',
+                                  border: 'none', cursor: 'pointer',
+                                  color: 'var(--on-surface)', textAlign: 'left',
+                                  transition: 'background 0.15s'
+                                }}
+                                onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                                onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                              >
+                                <div style={{ position: 'relative', flexShrink: 0 }}>
+                                  <img
+                                    src={u.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(u.name || u.username || 'U')}`}
+                                    alt={u.name}
+                                    style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover' }}
+                                  />
+                                  <span style={{ position: 'absolute', bottom: 0, right: 0, width: '8px', height: '8px', background: 'var(--secondary)', borderRadius: '50%', border: '2px solid var(--surface-container)' }} />
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.name || u.username}</div>
+                                  <div style={{ fontSize: '11px', color: 'var(--on-surface-variant)' }}>{u.role || 'Member'}</div>
+                                </div>
+                                {pickerMode === "group" && (
+                                  <div style={{
+                                    width: '18px', height: '18px', borderRadius: '5px', flexShrink: 0,
+                                    border: `2px solid ${isSelected ? 'var(--secondary)' : 'var(--outline-variant)'}`,
+                                    background: isSelected ? 'rgba(65,238,130,0.2)' : 'transparent',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    transition: 'all 0.15s'
+                                  }}>
+                                    {isSelected && <FiCheck size={11} color="var(--secondary)" />}
+                                  </div>
+                                )}
+                                {pickerMode === "dm" && (
+                                  <FiChevronRight size={14} color="var(--outline)" />
+                                )}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* Group create button */}
+                      {pickerMode === "group" && (
+                        <div style={{ padding: '10px 12px', borderTop: '1px solid var(--outline-variant)' }}>
+                          <button
+                            onClick={createGroup}
+                            disabled={!groupName.trim() || groupMembers.length === 0}
+                            style={{
+                              width: '100%', padding: '8px',
+                              background: (!groupName.trim() || groupMembers.length === 0) ? 'rgba(65,238,130,0.06)' : 'rgba(65,238,130,0.15)',
+                              border: '1px solid rgba(65,238,130,0.3)',
+                              borderRadius: '9px', cursor: (!groupName.trim() || groupMembers.length === 0) ? 'not-allowed' : 'pointer',
+                              color: 'var(--secondary)', fontSize: '13px', fontWeight: 600,
+                              opacity: (!groupName.trim() || groupMembers.length === 0) ? 0.5 : 1,
+                              transition: 'all 0.15s'
+                            }}
+                          >
+                            {groupMembers.length === 0
+                              ? 'Select members to create group'
+                              : `Create group with ${groupMembers.length} member${groupMembers.length > 1 ? 's' : ''}`}
+                          </button>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
 
             <div className="custom-scrollbar" style={{ overflowY: 'auto', flex: 1, padding: '0 12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -301,33 +563,62 @@ function ChatScreen() {
                     key={channel.id}
                     onClick={() => selectChannel(channel.id)}
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '10px 12px', borderRadius: '8px',
                       background: isActive ? 'rgba(91, 140, 255, 0.1)' : 'transparent',
-                      border: 'none',
-                      cursor: 'pointer',
+                      border: 'none', cursor: 'pointer',
                       color: isActive ? 'var(--primary)' : 'var(--on-surface-variant)',
-                      transition: 'all 0.2s',
-                      textAlign: 'left'
+                      transition: 'all 0.2s', textAlign: 'left'
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', fontWeight: isActive ? 600 : 500 }}>
-                      <FiHash size={16} />
-                      {channel.name}
+                      <FiHash size={16} />{channel.name}
                     </div>
                     {channel.badge > 0 && (
-                      <span style={{ background: 'var(--primary)', color: 'white', fontSize: '11px', fontWeight: 700, padding: '2px 6px', borderRadius: '10px' }}>
-                        {channel.badge}
-                      </span>
+                      <span style={{ background: 'var(--primary)', color: 'white', fontSize: '11px', fontWeight: 700, padding: '2px 6px', borderRadius: '10px' }}>{channel.badge}</span>
                     )}
                   </button>
                 );
               })}
 
-              <h4 style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--outline)', margin: '24px 8px 8px 8px', fontWeight: 600 }}>Direct Messages</h4>
+              {/* Groups section */}
+              {groups.length > 0 && (
+                <>
+                  <h4 style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--outline)', margin: '20px 8px 6px', fontWeight: 600 }}>Groups</h4>
+                  {groups.map(grp => {
+                    const isActive = grp.id === activeGroupId;
+                    return (
+                      <button
+                        key={grp.id}
+                        onClick={() => selectGroup(grp.id)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '10px',
+                          padding: '10px 12px', borderRadius: '8px',
+                          background: isActive ? 'rgba(65,238,130,0.1)' : 'transparent',
+                          border: 'none', cursor: 'pointer',
+                          color: isActive ? 'var(--secondary)' : 'var(--on-surface-variant)',
+                          width: '100%', textAlign: 'left', transition: 'all 0.2s'
+                        }}
+                      >
+                        {/* Stacked member avatars */}
+                        <div style={{ display: 'flex', flexShrink: 0 }}>
+                          {grp.members.slice(0, 3).map((m, i) => (
+                            <img
+                              key={m._id || m.id}
+                              src={m.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(m.name || m.username || 'U')}`}
+                              alt={m.name}
+                              style={{ width: '22px', height: '22px', borderRadius: '50%', border: '2px solid var(--surface)', marginLeft: i === 0 ? 0 : '-7px', objectFit: 'cover' }}
+                            />
+                          ))}
+                        </div>
+                        <span style={{ fontSize: '14px', fontWeight: isActive ? 600 : 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{grp.name}</span>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+
+              <h4 style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--outline)', margin: '20px 8px 8px', fontWeight: 600 }}>Direct Messages</h4>
 
               {isLoading ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -377,13 +668,116 @@ function ChatScreen() {
           {/* Right Column: Chat Window */}
           <div className="glass-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
+            {/* ── No conversation selected: premium empty state ── */}
+            {!activeDMUserId && !activeChannelId ? (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '28px', padding: '40px', textAlign: 'center' }}>
+                {/* Glowing icon cluster */}
+                <div style={{ position: 'relative', width: '100px', height: '100px' }}>
+                  {/* Outer glow ring */}
+                  <div style={{ position: 'absolute', inset: '-12px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(91,140,255,0.15) 0%, transparent 70%)', animation: 'chatPulse 2.8s ease-in-out infinite' }} />
+                  {/* Avatar ring of team members */}
+                  {otherUsers.slice(0, 4).map((u, i) => {
+                    const angle = (i / Math.max(otherUsers.slice(0, 4).length, 1)) * 2 * Math.PI - Math.PI / 2;
+                    const radius = 44;
+                    const x = 50 + radius * Math.cos(angle);
+                    const y = 50 + radius * Math.sin(angle);
+                    return (
+                      <img
+                        key={u._id || u.id}
+                        src={u.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(u.name || u.username || 'U')}`}
+                        alt={u.name}
+                        style={{
+                          position: 'absolute',
+                          width: '28px', height: '28px',
+                          borderRadius: '50%',
+                          border: '2px solid var(--surface)',
+                          objectFit: 'cover',
+                          left: `${x}%`, top: `${y}%`,
+                          transform: 'translate(-50%, -50%)',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.4)'
+                        }}
+                      />
+                    );
+                  })}
+                  {/* Center icon */}
+                  <div style={{ position: 'absolute', inset: '18px', borderRadius: '50%', background: 'rgba(91,140,255,0.12)', border: '1.5px solid rgba(91,140,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+                    <FiMessageSquare size={22} color="var(--primary)" />
+                  </div>
+                </div>
+
+                {/* Text */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '320px' }}>
+                  <h3 style={{ fontSize: '22px', fontWeight: 700, margin: 0, color: 'var(--on-surface)' }}>Your Messages</h3>
+                  <p style={{ margin: 0, fontSize: '14px', color: 'var(--on-surface-variant)', lineHeight: 1.6 }}>
+                    Select a teammate from the left to start a private conversation, or join a channel to chat with your team.
+                  </p>
+                </div>
+
+                {/* CTA buttons */}
+                {otherUsers.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', maxWidth: '260px' }}>
+                    <p style={{ margin: '0 0 4px', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--outline)' }}>Start a chat with</p>
+                    {otherUsers.slice(0, 3).map(u => (
+                      <button
+                        key={u._id || u.id}
+                        onClick={() => selectDMUser(u._id || u.id)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '12px',
+                          padding: '10px 16px',
+                          border: '1px solid rgba(91,140,255,0.2)',
+                          borderRadius: '12px',
+                          background: 'rgba(91,140,255,0.06)',
+                          cursor: 'pointer',
+                          color: 'var(--on-surface)',
+                          transition: 'background 0.18s, border-color 0.18s',
+                          width: '100%',
+                          textAlign: 'left'
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(91,140,255,0.14)'; e.currentTarget.style.borderColor = 'rgba(91,140,255,0.45)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(91,140,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(91,140,255,0.2)'; }}
+                      >
+                        <div style={{ position: 'relative', flexShrink: 0 }}>
+                          <img
+                            src={u.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(u.name || u.username || 'U')}`}
+                            alt={u.name}
+                            style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
+                          />
+                          <span style={{ position: 'absolute', bottom: 0, right: 0, width: '8px', height: '8px', background: 'var(--secondary)', borderRadius: '50%', border: '2px solid var(--surface)' }} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '14px', fontWeight: 600 }}>{u.name || u.username}</div>
+                          <div style={{ fontSize: '12px', color: 'var(--on-surface-variant)' }}>{u.role || 'Member'}</div>
+                        </div>
+                      </button>
+                    ))}
+                    {otherUsers.length > 3 && (
+                      <p style={{ margin: 0, fontSize: '12px', color: 'var(--outline)', textAlign: 'center' }}>+{otherUsers.length - 3} more in the sidebar</p>
+                    )}
+                  </div>
+                )}
+
+                <style>{`
+                  @keyframes chatPulse {
+                    0%, 100% { opacity: 0.6; transform: scale(1); }
+                    50% { opacity: 1; transform: scale(1.08); }
+                  }
+                `}</style>
+              </div>
+            ) : (
+              <>
             <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(67, 70, 83, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {activeDMUserId ? (
                     <>
-                      <img src={activeDMUser?.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(activeDMUser?.name || activeDMUser?.username || "User")}`} alt={activeDMUser?.name} style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />
-                      <span>{activeDMUser?.name || activeDMUser?.username}</span>
+                      <div style={{ position: 'relative', flexShrink: 0 }}>
+                        <img src={activeDMUser?.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(activeDMUser?.name || activeDMUser?.username || "User")}`} alt={activeDMUser?.name} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
+                        <span style={{ position: 'absolute', bottom: 0, right: 0, width: '9px', height: '9px', background: 'var(--secondary)', borderRadius: '50%', border: '2px solid var(--surface)' }} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '16px', fontWeight: 600 }}>{activeDMUser?.name || activeDMUser?.username}</div>
+                        <div style={{ fontSize: '12px', fontWeight: 400, color: 'var(--secondary)' }}>● Online</div>
+                      </div>
                     </>
                   ) : (
                     <>
@@ -392,9 +786,11 @@ function ChatScreen() {
                     </>
                   )}
                 </h3>
-                <p style={{ margin: 0, fontSize: '13px', color: 'var(--on-surface-variant)' }}>
-                  {activeDMUserId ? `Direct Message with ${activeDMUser?.username}` : "Company communications"}
-                </p>
+                {!activeDMUserId && (
+                  <p style={{ margin: 0, fontSize: '13px', color: 'var(--on-surface-variant)' }}>
+                    Company communications
+                  </p>
+                )}
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <div style={{ display: 'flex' }}>
@@ -416,12 +812,12 @@ function ChatScreen() {
                   <ChatMessageSkeleton isSelf={true} />
                 </div>
               ) : currentMessages.length === 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--on-surface-variant)' }}>
-                  <FiMessageCircle size={48} style={{ opacity: 0.2, marginBottom: '16px' }} />
-                  <p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--on-surface-variant)', gap: '12px' }}>
+                  <FiMessageCircle size={40} style={{ opacity: 0.2 }} />
+                  <p style={{ margin: 0, fontSize: '14px', textAlign: 'center' }}>
                     {activeDMUserId
-                      ? `This is the start of your direct message history with ${activeDMUser?.name || activeDMUser?.username || "this user"}.`
-                      : `This is the start of the #${activeChannel?.name || "channel"} channel.`}
+                      ? `Say hello to ${activeDMUser?.name || activeDMUser?.username || 'your teammate'} 👋`
+                      : `This is the start of #${activeChannel?.name || 'channel'}.`}
                   </p>
                 </div>
               ) : (
@@ -488,7 +884,7 @@ function ChatScreen() {
                     type="text"
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
-                    placeholder={`Message #${activeChannel?.name || "channel"}...`}
+                    placeholder={activeDMUserId ? `Message ${activeDMUser?.name || activeDMUser?.username || 'teammate'}…` : `Message #${activeChannel?.name || 'channel'}…`}
                     style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--on-surface)', fontSize: '15px', padding: '8px 0', outline: 'none' }}
                   />
                   <button type="button" className="icon-btn" style={{ marginLeft: '8px' }} onClick={() => { setToastMsg("Emoji picker opened"); setToastType("info"); }}><FiSmile size={20} /></button>
@@ -504,7 +900,8 @@ function ChatScreen() {
                 </motion.button>
               </form>
             </div>
-
+            </>
+            )}
           </div>
         </div>
       </div>

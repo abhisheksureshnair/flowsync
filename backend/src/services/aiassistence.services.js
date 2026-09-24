@@ -29,7 +29,7 @@ export const analyzeTasks = async (tasks, settings) => {
         messages: [
           {
             role: "system",
-            content: "You are Flow AI, an intelligent productivity assistant.",
+            content: "You are Echo AI, an intelligent productivity assistant.",
           },
           {
             role: "user",
@@ -104,7 +104,7 @@ export const aiChatWith = async (tasks, message, userName, settings) => {
           {
             role: "system",
             content:
-              "You are Flow AI, the AI assistant for FlowSync. Always follow the user's workspace rules and the instructions provided in the user message.",
+              "You are Echo AI, the AI assistant for FlowSync. Always follow the user's workspace rules and the instructions provided in the user message.",
           },
           {
             role: "user",

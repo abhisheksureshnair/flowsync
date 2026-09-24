@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Sidebar from "../components/layout/Sidebar";
 import Toast from "../components/ui/Toast";
 import "../styles/global.css";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { 
-  FiSearch, 
+  FiSettings, 
   FiBell, 
   FiPlus, 
   FiUser, 
@@ -13,9 +13,11 @@ import {
   FiBell as FiBellOutline, 
   FiLock, 
   FiCreditCard,
-  FiCamera
+  FiCamera,
+  FiLoader
 } from "react-icons/fi";
 import { THEMES, getSavedTheme, applyTheme } from "../utils/theme";
+import { uploadProfileImage, updateUserProfile } from "../api/userApi";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -33,6 +35,9 @@ function Settings() {
   const [toastMsg, setToastMsg] = useState("");
   const [toastType, setToastType] = useState("success");
   const [currentTheme, setCurrentTheme] = useState(() => getSavedTheme());
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef(null);
 
   const handleSelectTheme = (theme) => {
     setCurrentTheme(theme.id);
@@ -44,6 +49,7 @@ function Settings() {
   // Form State
   const localUser = localStorage.getItem("user");
   const currentUser = localUser ? JSON.parse(localUser) : {};
+  const [userAvatar, setUserAvatar] = useState(currentUser.profileImage || "");
   const initialProfile = {
     fullName: currentUser.name || currentUser.username || "User",
     jobTitle: currentUser.role || "Member",
@@ -51,6 +57,22 @@ function Settings() {
     bio: currentUser.bio || ""
   };
   const [profileData, setProfileData] = useState(initialProfile);
+
+  // Sync avatar if user in localStorage is updated
+  useEffect(() => {
+    const handleUpdate = () => {
+      try {
+        const u = JSON.parse(localStorage.getItem("user") || "{}");
+        if (u.profileImage) {
+          setUserAvatar(u.profileImage);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    window.addEventListener("userUpdated", handleUpdate);
+    return () => window.removeEventListener("userUpdated", handleUpdate);
+  }, []);
   
   const categories = [
     { id: "profile", label: "Profile", icon: <FiUser size={18} /> },
@@ -60,17 +82,49 @@ function Settings() {
     { id: "billing", label: "Billing", icon: <FiCreditCard size={18} /> }
   ];
 
-  const handleSaveProfile = () => {
-    const updated = {
-      ...currentUser,
-      name: profileData.fullName,
-      role: profileData.jobTitle,
-      email: profileData.email,
-      bio: profileData.bio
-    };
-    localStorage.setItem("user", JSON.stringify(updated));
-    setToastMsg("Profile updated successfully!");
-    setToastType("success");
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    try {
+      const payload = {
+        name: profileData.fullName,
+        email: profileData.email,
+        bio: profileData.bio,
+        role: profileData.jobTitle,
+        userId: currentUser.id || currentUser._id,
+      };
+
+      const response = await updateUserProfile(payload);
+      const updated = {
+        ...currentUser,
+        name: profileData.fullName,
+        email: profileData.email,
+        bio: profileData.bio,
+        role: profileData.jobTitle,
+        ...(response.data?.user || {}),
+      };
+      localStorage.setItem("user", JSON.stringify(updated));
+      window.dispatchEvent(new Event("userUpdated"));
+      window.dispatchEvent(new CustomEvent("userProfileUpdated", { detail: updated }));
+
+      setToastMsg("Profile updated successfully!");
+      setToastType("success");
+    } catch (err) {
+      console.error("Profile update error:", err);
+      // Fallback local update
+      const updated = {
+        ...currentUser,
+        name: profileData.fullName,
+        role: profileData.jobTitle,
+        email: profileData.email,
+        bio: profileData.bio
+      };
+      localStorage.setItem("user", JSON.stringify(updated));
+      window.dispatchEvent(new Event("userUpdated"));
+      setToastMsg("Profile updated successfully!");
+      setToastType("success");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancelProfile = () => {
@@ -80,8 +134,75 @@ function Settings() {
   };
 
   const handleChangePicture = () => {
-    setToastMsg("File upload dialog opened...");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileSelected = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate type
+    if (!file.type.startsWith("image/")) {
+      setToastMsg("Please select an image file (PNG, JPG, WEBP, GIF, SVG)");
+      setToastType("error");
+      return;
+    }
+
+    // Validate size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setToastMsg("File size exceeds 5MB limit. Please choose a smaller image.");
+      setToastType("error");
+      return;
+    }
+
+    // Optimistic local preview
+    const previewUrl = URL.createObjectURL(file);
+    setUserAvatar(previewUrl);
+    setIsUploading(true);
+    setToastMsg("Uploading profile picture...");
     setToastType("info");
+
+    try {
+      const formData = new FormData();
+      formData.append("profileImage", file);
+      const userId = currentUser.id || currentUser._id;
+      if (userId) {
+        formData.append("userId", userId);
+      }
+
+      const res = await uploadProfileImage(formData);
+
+      if (res.data?.success) {
+        const newImageUrl = res.data.profileImage;
+        setUserAvatar(newImageUrl);
+
+        const updated = {
+          ...currentUser,
+          ...(res.data.user || {}),
+          profileImage: newImageUrl,
+        };
+        localStorage.setItem("user", JSON.stringify(updated));
+
+        // Dispatch events so Sidebar and all other views update immediately
+        window.dispatchEvent(new Event("userUpdated"));
+        window.dispatchEvent(new CustomEvent("userProfileUpdated", { detail: updated }));
+
+        setToastMsg("Profile picture updated and saved!");
+        setToastType("success");
+      } else {
+        throw new Error(res.data?.message || "Failed to upload image");
+      }
+    } catch (err) {
+      console.error("Profile image upload failed:", err);
+      setUserAvatar(currentUser.profileImage || "");
+      setToastMsg(err.response?.data?.message || err.message || "Failed to upload profile picture");
+      setToastType("error");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -91,8 +212,10 @@ function Settings() {
       <div className="main-content">
         <header className="top-header">
           <div className="header-search">
-            <FiSearch size={18} color="var(--on-surface-variant)" />
-            <input type="text" placeholder="Search settings..." />
+            <FiSettings size={18} color="var(--on-surface-variant)" />
+            <span style={{ fontSize: "15px", color: "var(--on-surface-variant)", paddingLeft: "8px" }}>
+              Settings &amp; Preferences
+            </span>
           </div>
           <div className="header-actions">
             <button className="btn-secondary" onClick={() => { setToastMsg("Quick actions opened"); setToastType("info"); }}>Quick Actions</button>
@@ -169,15 +292,57 @@ function Settings() {
                       <h3 style={{ fontSize: '20px', fontWeight: 600, margin: 0 }}>Public Profile</h3>
 
                       {/* Avatar Upload */}
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleFileSelected} 
+                        accept="image/png, image/jpeg, image/jpg, image/webp, image/gif, image/svg+xml" 
+                        style={{ display: "none" }} 
+                      />
+
                       <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
                         <div style={{ position: 'relative', width: '100px', height: '100px' }}>
                           <img 
-                            src={currentUser.profileImage || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(profileData.fullName || "User")}`} 
+                            src={userAvatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(profileData.fullName || "User")}`} 
                             alt="Avatar" 
-                            style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--outline-variant)' }} 
+                            style={{ 
+                              width: '100%', 
+                              height: '100%', 
+                              borderRadius: '50%', 
+                              objectFit: 'cover', 
+                              border: '2px solid var(--outline-variant)',
+                              opacity: isUploading ? 0.6 : 1,
+                              transition: 'opacity 0.2s ease'
+                            }} 
                           />
+                          {isUploading && (
+                            <div style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              borderRadius: '50%',
+                              background: 'rgba(0, 0, 0, 0.55)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              backdropFilter: 'blur(2px)'
+                            }}>
+                              <motion.div
+                                animate={{ rotate: 360 }}
+                                transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}
+                              >
+                                <FiLoader size={26} />
+                              </motion.div>
+                            </div>
+                          )}
                           <button 
+                            type="button"
                             onClick={handleChangePicture}
+                            disabled={isUploading}
+                            title="Change profile picture"
                             style={{
                               position: 'absolute',
                               bottom: 0,
@@ -191,16 +356,38 @@ function Settings() {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              cursor: 'pointer',
-                              boxShadow: '0 4px 10px rgba(91,140,255,0.4)'
+                              cursor: isUploading ? 'not-allowed' : 'pointer',
+                              boxShadow: '0 4px 10px rgba(91,140,255,0.4)',
+                              transition: 'transform 0.2s',
                             }}
                           >
                             <FiCamera size={16} />
                           </button>
                         </div>
                         <div>
-                          <button className="btn-secondary" style={{ marginBottom: '8px' }} onClick={handleChangePicture}>Change Picture</button>
-                          <p style={{ fontSize: '13px', color: 'var(--on-surface-variant)', margin: 0 }}>JPG, GIF or PNG. 1MB max.</p>
+                          <button 
+                            type="button"
+                            className="btn-secondary" 
+                            style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }} 
+                            onClick={handleChangePicture}
+                            disabled={isUploading}
+                          >
+                            {isUploading ? (
+                              <>
+                                <motion.div
+                                  animate={{ rotate: 360 }}
+                                  transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                                  style={{ display: 'flex' }}
+                                >
+                                  <FiLoader size={14} />
+                                </motion.div>
+                                Uploading...
+                              </>
+                            ) : (
+                              "Change Picture"
+                            )}
+                          </button>
+                          <p style={{ fontSize: '13px', color: 'var(--on-surface-variant)', margin: 0 }}>JPG, PNG, GIF or WEBP. 5MB max.</p>
                         </div>
                       </div>
 
@@ -252,8 +439,10 @@ function Settings() {
                         </div>
 
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
-                          <button className="btn-secondary" onClick={handleCancelProfile}>Cancel</button>
-                          <button className="btn-primary" onClick={handleSaveProfile}>Save Changes</button>
+                          <button className="btn-secondary" onClick={handleCancelProfile} disabled={isSaving || isUploading}>Cancel</button>
+                          <button className="btn-primary" onClick={handleSaveProfile} disabled={isSaving || isUploading}>
+                            {isSaving ? "Saving..." : "Save Changes"}
+                          </button>
                         </div>
                       </div>
                     </motion.div>
@@ -455,7 +644,7 @@ function Settings() {
                           { title: "Task Assignments & Status Changes", desc: "Get notified when a task is assigned to you or completed" },
                           { title: "Sprint Due Dates & Milestones", desc: "Receive alerts for approaching deadlines and sprint closures" },
                           { title: "Team Mentions & Messages", desc: "Instant alert whenever a team member @mentions you in chat" },
-                          { title: "Flow AI Recommendations", desc: "Get smart productivity suggestions and automated summaries" }
+                          { title: "Echo AI Recommendations", desc: "Get smart productivity suggestions and automated summaries" }
                         ].map((pref, idx) => (
                           <div key={idx} style={{
                             display: 'flex',

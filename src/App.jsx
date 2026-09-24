@@ -10,6 +10,7 @@ import Team from "./pages/Team";
 import Settings from "./pages/Settings";
 import Calendar from "./components/Calender/Calendar";
 import AIAssist from "./pages/AIAssist";
+import Attendance from "./pages/Attendance";
 import socket from "./socket/socket";
 import { initTheme } from "./utils/theme";
 
@@ -35,6 +36,7 @@ function App() {
         <Route path="/team" element={<Team />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/calendar" element={<Calendar />} />
+        <Route path="/attendance" element={<Attendance />} />
       </Routes>
     </BrowserRouter>
   );

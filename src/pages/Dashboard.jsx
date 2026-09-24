@@ -7,7 +7,7 @@ import "../styles/dashboard.css";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  FiSearch,
+  FiGrid,
   FiBell,
   FiPlus,
   FiCheckCircle,
@@ -18,11 +18,15 @@ import {
   FiClock,
   FiMessageSquare,
   FiLayout,
-  FiSettings
+  FiSettings,
+  FiCalendar,
+  FiSun,
+  FiAlertCircle
 } from "react-icons/fi";
 import { getDashboardData } from "../api/dashboard";
 import { allTask } from "../api/taskApi";
 import { Skeleton, SkeletonCircle, StatCardSkeleton } from "../components/ui/Skeleton";
+import { getAttendence, getLeaveDetails, fetchLeaveRequests } from "../api/attendenceApi";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -44,6 +48,30 @@ function Dashboard() {
   const [dashboardData, setDashboardData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [tasks, setTasks] = useState([]);
+  const [attendanceData, setAttendanceData] = useState(null);
+  const [leaveDetails, setLeaveDetails] = useState(null);
+  const [pendingLeaveCount, setPendingLeaveCount] = useState(0);
+  const [isAttendanceLoading, setIsAttendanceLoading] = useState(true);
+
+  // Compute 25th-to-25th attendance cycle label
+  const getAttendanceCycleLabel = () => {
+    const now = new Date();
+    const day = now.getDate();
+    const year = now.getFullYear();
+    const month = now.getMonth(); // 0-indexed
+    const fmt = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    if (day >= 25) {
+      // cycle: 25th this month → 25th next month
+      const start = new Date(year, month, 25);
+      const end = new Date(year, month + 1, 25);
+      return `${fmt(start)} – ${fmt(end)}`;
+    } else {
+      // cycle: 25th last month → 25th this month
+      const start = new Date(year, month - 1, 25);
+      const end = new Date(year, month, 25);
+      return `${fmt(start)} – ${fmt(end)}`;
+    }
+  };
   const user = JSON.parse(localStorage.getItem("user")) || { name: "Guest" };
 
   useEffect(() => {
@@ -71,6 +99,24 @@ function Dashboard() {
             } catch (err) {
               console.error("Failed to fetch task data:", err);
             }
+          })(),
+          (async () => {
+            try {
+              const [attRes, leaveRes, reqRes] = await Promise.allSettled([
+                getAttendence(),
+                getLeaveDetails(),
+                fetchLeaveRequests({ status: "pending" }),
+              ]);
+              if (isMounted) {
+                if (attRes.status === "fulfilled") setAttendanceData(attRes.value.data);
+                if (leaveRes.status === "fulfilled") setLeaveDetails(leaveRes.value.data);
+                if (reqRes.status === "fulfilled") setPendingLeaveCount(reqRes.value.data?.total ?? 0);
+              }
+            } catch (err) {
+              console.error("Failed to fetch attendance data:", err);
+            } finally {
+              if (isMounted) setIsAttendanceLoading(false);
+            }
           })()
         ]);
       } finally {
@@ -88,8 +134,10 @@ function Dashboard() {
       <div className="main-content">
         <header className="top-header">
           <div className="header-search">
-            <FiSearch size={18} color="var(--on-surface-variant)" />
-            <input type="text" placeholder="Search tasks, docs, or people..." />
+            <FiGrid size={18} color="var(--on-surface-variant)" />
+            <span style={{ fontSize: "15px", color: "var(--on-surface-variant)", paddingLeft: "8px" }}>
+              Dashboard
+            </span>
           </div>
           <div className="header-actions" style={{ position: 'relative' }}>
             <button className="btn-secondary" onClick={() => setQuickActionsOpen(true)}>Quick Actions</button>
@@ -269,6 +317,143 @@ function Dashboard() {
                   })()}
                 </>
               )}
+            </motion.section>
+
+            {/* ── Attendance Stats Section ─────────────────────────────── */}
+            <motion.section variants={itemVariants} style={{ marginTop: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                <FiCalendar size={18} color="var(--primary)" />
+                <h3 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>Attendance Overview</h3>
+                <span style={{ fontSize: '12px', color: 'var(--on-surface-variant)', background: 'rgba(91,140,255,0.08)', padding: '3px 10px', borderRadius: '20px', fontWeight: 500 }}>
+                  {getAttendanceCycleLabel()}
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+
+                {/* Total Attendance Days */}
+                {isAttendanceLoading ? <StatCardSkeleton /> : (
+                  <div className="stat-card glass-card" style={{ padding: '22px', borderTop: '2px solid rgba(91,140,255,0.4)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                      <span style={{ fontSize: '14px', color: 'var(--on-surface-variant)' }}>Days Present</span>
+                      <div style={{ padding: '8px', background: 'rgba(91,140,255,0.1)', borderRadius: '8px', color: 'var(--primary)' }}>
+                        <FiCalendar size={18} />
+                      </div>
+                    </div>
+                    <h3 style={{ fontSize: '34px', fontWeight: 700, margin: '0 0 6px 0', color: 'var(--on-surface)' }}>
+                      {attendanceData?.totalAttendance ?? attendanceData?.totalattence ?? 0}
+                    </h3>
+                    <span style={{ fontSize: '12px', color: 'var(--on-surface-variant)' }}>days this cycle</span>
+                  </div>
+                )}
+
+                {/* Total Work Time */}
+                {isAttendanceLoading ? <StatCardSkeleton /> : (
+                  (() => {
+                    const workedHours = attendanceData?.totalWorkHours ?? 0;
+                    const targetHours = 160; // 25-day cycle × 8h
+                    const fillPct = Math.min(100, Math.round((workedHours / targetHours) * 100));
+                    const barColor = fillPct >= 100
+                      ? '#41ee82'
+                      : fillPct >= 60
+                        ? '#5b8cff'
+                        : 'rgba(65,238,130,0.7)';
+                    return (
+                      <div className="stat-card glass-card" style={{ padding: '22px', borderTop: '2px solid rgba(65,238,130,0.4)', position: 'relative', overflow: 'hidden', display: 'flex', gap: '16px' }}>
+                        {/* Left: text content */}
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                            <span style={{ fontSize: '14px', color: 'var(--on-surface-variant)' }}>Total Work Time</span>
+                            <div style={{ padding: '8px', background: 'rgba(65,238,130,0.1)', borderRadius: '8px', color: 'var(--secondary)' }}>
+                              <FiClock size={18} />
+                            </div>
+                          </div>
+                          <h3 style={{ fontSize: '34px', fontWeight: 700, margin: '0 0 4px 0', color: 'var(--on-surface)' }}>
+                            {workedHours}h
+                          </h3>
+                          <span style={{ fontSize: '12px', color: 'var(--on-surface-variant)' }}>of {targetHours}h target</span>
+                          <div style={{ marginTop: '14px', fontSize: '11px', color: barColor, fontWeight: 600, letterSpacing: '0.5px' }}>
+                            {fillPct}% complete
+                          </div>
+                        </div>
+
+                        {/* Right: vertical fill bar */}
+                        <div style={{ width: '10px', borderRadius: '6px', background: 'rgba(255,255,255,0.06)', alignSelf: 'stretch', overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
+                          <div style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            height: `${fillPct}%`,
+                            background: `linear-gradient(to top, ${barColor}, rgba(65,238,130,0.3))`,
+                            borderRadius: '6px',
+                            boxShadow: `0 0 10px ${barColor}88`,
+                            transition: 'height 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                          }} />
+                          {/* Shimmer sweep */}
+                          {fillPct > 0 && (
+                            <div style={{
+                              position: 'absolute',
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              height: `${fillPct}%`,
+                              background: 'linear-gradient(to top, transparent 0%, rgba(255,255,255,0.18) 50%, transparent 100%)',
+                              borderRadius: '6px',
+                              animation: 'shimmerUp 2.4s ease-in-out infinite',
+                            }} />
+                          )}
+                        </div>
+
+                        <style>{`
+                          @keyframes shimmerUp {
+                            0%   { transform: translateY(100%); opacity: 0; }
+                            30%  { opacity: 1; }
+                            100% { transform: translateY(-100%); opacity: 0; }
+                          }
+                        `}</style>
+                      </div>
+                    );
+                  })()
+                )}
+
+                {/* Leave Taken (Approved) */}
+                {isAttendanceLoading ? <StatCardSkeleton /> : (
+                  <div className="stat-card glass-card" style={{ padding: '22px', borderTop: '2px solid rgba(255,184,116,0.4)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                      <span style={{ fontSize: '14px', color: 'var(--on-surface-variant)' }}>Leave Taken</span>
+                      <div style={{ padding: '8px', background: 'rgba(255,184,116,0.1)', borderRadius: '8px', color: 'var(--tertiary)' }}>
+                        <FiSun size={18} />
+                      </div>
+                    </div>
+                    <h3 style={{ fontSize: '34px', fontWeight: 700, margin: '0 0 6px 0', color: 'var(--on-surface)' }}>
+                      {leaveDetails?.approvedLeaves ?? 0}
+                    </h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--on-surface-variant)' }}>
+                      <span>{leaveDetails?.remainingLeavesofMonth ?? 0} remaining this month</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Pending Leave Requests */}
+                {isAttendanceLoading ? <StatCardSkeleton /> : (
+                  <div className="stat-card glass-card" style={{ padding: '22px', borderTop: `2px solid ${pendingLeaveCount > 0 ? 'rgba(255,99,99,0.5)' : 'rgba(255,255,255,0.08)'}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                      <span style={{ fontSize: '14px', color: 'var(--on-surface-variant)' }}>Pending Requests</span>
+                      <div style={{ padding: '8px', background: pendingLeaveCount > 0 ? 'rgba(255,99,99,0.1)' : 'rgba(255,255,255,0.05)', borderRadius: '8px', color: pendingLeaveCount > 0 ? '#ff6363' : 'var(--outline)' }}>
+                        <FiAlertCircle size={18} />
+                      </div>
+                    </div>
+                    <h3 style={{ fontSize: '34px', fontWeight: 700, margin: '0 0 6px 0', color: pendingLeaveCount > 0 ? '#ff6363' : 'var(--on-surface)' }}>
+                      {pendingLeaveCount}
+                    </h3>
+                    <span style={{ fontSize: '12px', color: 'var(--on-surface-variant)' }}>
+                      {pendingLeaveCount === 0 ? 'No pending requests' : 'awaiting approval'}
+                    </span>
+                  </div>
+                )}
+
+              </div>
             </motion.section>
 
             {/* Main Content Area */}

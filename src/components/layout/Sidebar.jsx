@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./sidebar.css";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
@@ -13,7 +13,8 @@ import {
   FiSidebar,
   FiPlus,
   FiCpu,
-  FiLogOut
+  FiLogOut,
+  FiActivity
 } from "react-icons/fi";
 
 import flowsyncIcon from "../../assets/flowsync-icon.png";
@@ -22,6 +23,33 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const getStoredUser = () => {
+    try {
+      const local = localStorage.getItem("user");
+      return local ? JSON.parse(local) : { name: "Test", role: "Member", profileImage: "" };
+    } catch {
+      return { name: "Test", role: "Member", profileImage: "" };
+    }
+  };
+
+  const [user, setUser] = useState(getStoredUser);
+
+  useEffect(() => {
+    const handleUserUpdate = () => {
+      setUser(getStoredUser());
+    };
+
+    window.addEventListener("userUpdated", handleUserUpdate);
+    window.addEventListener("userProfileUpdated", handleUserUpdate);
+    window.addEventListener("storage", handleUserUpdate);
+
+    return () => {
+      window.removeEventListener("userUpdated", handleUserUpdate);
+      window.removeEventListener("userProfileUpdated", handleUserUpdate);
+      window.removeEventListener("storage", handleUserUpdate);
+    };
+  }, []);
 
   const navSections = [
     {
@@ -32,6 +60,7 @@ export default function Sidebar() {
         { title: "Tasks", path: "/tasks", icon: <FiCheckSquare size={20} /> },
         { title: "Team", path: "/team", icon: <FiUsers size={20} /> },
         { title: "Chat", path: "/chat", icon: <FiMessageSquare size={20} /> },
+        { title: "Attendance", path: "/attendance", icon: <FiActivity size={20} /> },
       ]
     },
     {
@@ -39,7 +68,7 @@ export default function Sidebar() {
       title: "TOOLS",
       items: [
         { 
-          title: "Flow AI", 
+          title: "Echo AI", 
           path: "/ai-assist", 
           icon: <FiCpu size={20} />, 
           isSpecial: true,
@@ -56,13 +85,6 @@ export default function Sidebar() {
       ]
     }
   ];
-
-  const localUser = localStorage.getItem("user");
-  const user = localUser ? JSON.parse(localUser) : {
-    name: "Test",
-    role: "Member",
-    profileImage: ""
-  };
 
   const handleLogout = (e) => {
     e.stopPropagation();

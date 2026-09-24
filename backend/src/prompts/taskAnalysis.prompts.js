@@ -1,5 +1,5 @@
 export const buildTaskAnalysisPrompt = (tasks) => `
-You are Flow AI, an AI project manager.
+You are Echo AI, an AI project manager.
 
 Analyze the following tasks.
 

@@ -18,7 +18,6 @@ import {
   FiBookOpen,
   FiSettings,
   FiAlertTriangle,
-  FiSearch,
   FiBell,
   FiPlus,
   FiUsers,
@@ -148,7 +147,7 @@ function AIAssist() {
     {
       id: "welcome",
       role: "assistant",
-      content: "Hello! I am Flow AI. I've analyzed your workspace tasks. You can ask me questions like 'What is my next deadline?', 'Summarize my workload', or 'Can I finish all tasks today?'"
+      content: "Hello! I am Echo AI. I've analyzed your workspace tasks. You can ask me questions like 'What is my next deadline?', 'Summarize my workload', or 'Can I finish all tasks today?'"
     }
   ]);
   const [inputVal, setInputVal] = useState("");
@@ -241,7 +240,7 @@ function AIAssist() {
       const raw = response.data?.data || [];
       setTasks(raw);
     } catch (err) {
-      console.error("Failed to load tasks for Flow AI:", err);
+      console.error("Failed to load tasks for Echo AI:", err);
     } finally {
       setIsTasksLoading(false);
     }
@@ -379,8 +378,10 @@ function AIAssist() {
       <div className="main-content">
         <header className="top-header">
           <div className="header-search">
-            <FiSearch size={18} color="var(--on-surface-variant)" />
-            <input type="text" placeholder="Search tasks, docs, or AI insights..." />
+            <FiCpu size={18} color="var(--on-surface-variant)" />
+            <span style={{ fontSize: "15px", color: "var(--on-surface-variant)", paddingLeft: "8px" }}>
+              Echo AI Assistant
+            </span>
           </div>
           <div className="header-actions" style={{ position: 'relative' }}>
             <button className="btn-secondary" onClick={() => setQuickActionsOpen(true)}>Quick Actions</button>
@@ -450,11 +451,11 @@ function AIAssist() {
             {/* Centered glassmorphic card */}
             <div className="glass-card" style={{ position: 'relative', zIndex: 2, padding: '48px 40px', maxWidth: '500px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', background: 'rgba(18, 18, 26, 0.7)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '24px', boxShadow: '0 24px 60px rgba(0,0,0,0.6)' }}>
               <div className="ai-avatar-glow" style={{ width: '100px', height: '100px', marginBottom: '24px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <img src={flowAiAvatar} alt="Flow AI" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <img src={flowAiAvatar} alt="Echo AI" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               </div>
-              <h2 style={{ fontSize: '28px', fontWeight: 800, margin: '0 0 12px 0', letterSpacing: '-0.5px', color: 'var(--on-surface)' }}>Flow AI Connection</h2>
+              <h2 style={{ fontSize: '28px', fontWeight: 800, margin: '0 0 12px 0', letterSpacing: '-0.5px', color: 'var(--on-surface)' }}>Echo AI Connection</h2>
               <p style={{ fontSize: '14.5px', color: 'var(--on-surface-variant)', lineHeight: 1.6, margin: '0 0 32px 0', opacity: 0.85 }}>
-                Activate the intelligence layer. Connect Flow AI to NVIDIA NIM or another preferred LLM service to unlock automated task priority queues and workload recommendations.
+                Activate the intelligence layer. Connect Echo AI to NVIDIA NIM or another preferred LLM service to unlock automated task priority queues and workload recommendations.
               </p>
               <button
                 className="btn-primary"
@@ -471,10 +472,10 @@ function AIAssist() {
             <header className="ai-header-section">
               <div className="ai-profile-welcome">
                 <div className="ai-avatar-glow" style={{ overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <img src={flowAiAvatar} alt="Flow AI" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <img src={flowAiAvatar} alt="Echo AI" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 </div>
                 <div>
-                  <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 800, letterSpacing: '-0.5px' }}>Flow AI</h1>
+                  <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 800, letterSpacing: '-0.5px' }}>Echo AI</h1>
                   <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--on-surface-variant)', opacity: 0.8 }}>
                     Good Morning, {user.name} 👋
                   </p>
@@ -537,7 +538,7 @@ function AIAssist() {
                       value={inputVal}
                       onChange={(e) => setInputVal(e.target.value)}
                       onFocus={() => setIsChatOpen(true)}
-                      placeholder="Ask Flow AI about your tasks..."
+                      placeholder="Ask Echo AI about your tasks..."
                       className="ai-prompt-input"
                     />
                     <button
@@ -628,7 +629,7 @@ function AIAssist() {
                       <div className="ai-quote-box">
                         "{aiData.recommendedTask.reason}"
                         <div style={{ marginTop: '8px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.5px', color: 'var(--primary)' }}>
-                          — FLOW AI INSIGHT
+                          — ECHO AI INSIGHT
                         </div>
                       </div>
 
@@ -870,7 +871,7 @@ function AIAssist() {
                         <div className="ai-chat-drawer-header">
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <img src={flowsyncIcon} alt="FlowSync" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
-                            <span style={{ fontWeight: 700 }}>Flow AI Assistant</span>
+                            <span style={{ fontWeight: 700 }}>Echo AI Assistant</span>
                           </div>
                           <button className="icon-btn" onClick={() => setIsChatOpen(false)} type="button">
                             <FiX size={20} />

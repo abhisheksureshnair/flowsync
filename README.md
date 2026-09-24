@@ -80,7 +80,7 @@ FlowSync/
 │   │   ├── taskApi.js
 │   │   └── userApi.js
 │   ├── pages/
-│   │   ├── AIAssist.jsx                   # [NEW] Flow AI Assistant page
+│   │   ├── AIAssist.jsx                   # [NEW] Echo AI Assistant page
 │   │   ├── Dashboard.jsx                  # [UPDATED] Live data from API
 │   │   ├── Tasks.jsx                      # [UPDATED] Task management improvements
 │   │   └── ...
@@ -92,7 +92,7 @@ FlowSync/
 │   │       ├── LiquidEther.css            # [NEW] LiquidEther styles
 │   │       └── RippleGrid.jsx             # [NEW] Ripple grid animation component
 │   ├── assets/
-│   │   └── flow-ai-avatar.png             # [NEW] Flow AI avatar asset
+│   │   └── flow-ai-avatar.png             # [NEW] Echo AI avatar asset
 │   └── styles/
 │       ├── aiassist.css                   # [NEW] AI Assist page styles
 │       └── RippleGrid.css                 # [NEW] RippleGrid animation styles
@@ -149,7 +149,7 @@ A full AI assistant feature was implemented using external LLM providers (NVIDIA
 
 ### Frontend Changes
 
-#### ✅ Flow AI Assistant Page (`/ai-assist`)
+#### ✅ Echo AI Assistant Page (`/ai-assist`)
 **New file:** `src/pages/AIAssist.jsx`
 
 A complete AI chat and analysis interface:
@@ -159,7 +159,7 @@ A complete AI chat and analysis interface:
   - Priority queue (top 3 tasks)
   - Risk analysis with risk level and suggestion
   - Productivity insights
-- **Live Chat Interface** — Real-time conversation with Flow AI:
+- **Live Chat Interface** — Real-time conversation with Echo AI:
   - Sends user messages to `messageAI()` API
   - Displays AI responses with streaming-style rendering
   - No demo/mock data — fully integrated with backend
@@ -172,7 +172,7 @@ A complete AI chat and analysis interface:
 - `src/components/ui/RippleGrid.jsx` — Canvas/CSS ripple grid animation component
 - `src/styles/aiassist.css` — Full styling for the AI Assist page
 - `src/styles/RippleGrid.css` — Styles for the RippleGrid component
-- `src/assets/flow-ai-avatar.png` — Avatar image for the Flow AI assistant
+- `src/assets/flow-ai-avatar.png` — Avatar image for the Echo AI assistant
 
 #### ✅ AI Assistance API Client
 **New file:** `src/api/aiassistenceApi.js`
@@ -187,7 +187,7 @@ A complete AI chat and analysis interface:
 
 #### ✅ Updated Frontend Files
 - `src/App.jsx` — Added `AIAssist` page import and `/ai-assist` route
-- `src/components/layout/Sidebar.jsx` — Added **Flow AI** navigation link pointing to `/ai-assist`
+- `src/components/layout/Sidebar.jsx` — Added **Echo AI** navigation link pointing to `/ai-assist`
 - `src/pages/Dashboard.jsx` — Integrated live data from `getDashboardData()` API replacing static/mock data
 - `src/pages/Tasks.jsx` — Task management improvements and UI updates
 - `package.json` — Added new dependencies: `gsap`, `motion`, `ogl`, `three`
@@ -244,7 +244,7 @@ npm run dev
 | GET | `/api/ai/assistence` | Yes | AI task analysis |
 | POST | `/api/ai/addmodel` | Yes | Save AI provider config |
 | GET | `/api/ai/fetchmodels` | Yes | Get AI model info |
-| POST | `/api/ai/aiChat` | Yes | Chat with Flow AI |
+| POST | `/api/ai/aiChat` | Yes | Chat with Echo AI |
 | POST | `/api/eta` | No | Calculate ETA between two coordinates |
 
 ---
@@ -269,7 +269,7 @@ npm run dev
 | `/dashboard` | `Dashboard` | Live stats & overview |
 | `/tasks` | `Tasks` | Task management |
 | `/chat` | `ChatScreen` | Real-time team chat |
-| `/ai-assist` | `AIAssist` | Flow AI assistant |
+| `/ai-assist` | `AIAssist` | Echo AI assistant |
 | `/team` | `Team` | Team members view |
 | `/settings` | `Settings` | User settings |
 | `/calendar` | `Calendar` | Task calendar view |
