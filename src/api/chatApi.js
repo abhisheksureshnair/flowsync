@@ -8,7 +8,5 @@ export const sendChat = (data) => {
 }
 
 export const fetchChat = (data) => {
-
-    console.log("^^^^^^^^^^^^^^^^^^^^^^.    ", data)
     return api.post("/chat/fetchchat", data)
 }

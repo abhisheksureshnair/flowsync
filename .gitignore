@@ -7,27 +7,39 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+build/
+
+# Local env files (NEVER commit secrets)
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# Uploads (user-generated files — not permanent on Render)
+backend/uploads/*
+!backend/uploads/**/.gitkeep
+uploads/
+
+# Temporary files
+tmp/
+temp/
 *.local
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-
-# Environment variables
-.env
-.env.*
-backend/.env
-
-# Uploads
-backend/uploads/*
-!backend/uploads/**/.gitkeep

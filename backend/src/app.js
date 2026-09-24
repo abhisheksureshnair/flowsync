@@ -18,7 +18,12 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-app.use(cors());
+const allowedOrigin = process.env.CLIENT_URL || "http://localhost:5173";
+
+app.use(cors({
+  origin: allowedOrigin,
+  credentials: true,
+}));
 app.use(express.json());
 app.use(morgan("dev"));
 

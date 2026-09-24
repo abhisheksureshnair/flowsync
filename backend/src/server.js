@@ -18,12 +18,13 @@ const httpServer = createServer(app);
 // Create Socket.IO Server
 const allowedOrigins = process.env.CLIENT_URL
   ? [process.env.CLIENT_URL, "http://localhost:5173", "http://localhost:5174"]
-  : "*";
+  : ["http://localhost:5173", "http://localhost:5174"];
 
 const io = new Server(httpServer, {
   cors: {
     origin: allowedOrigins,
     methods: ["GET", "POST"],
+    credentials: true,
   },
 });
 
