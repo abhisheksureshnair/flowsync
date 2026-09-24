@@ -16,9 +16,13 @@ connectDB();
 const httpServer = createServer(app);
 
 // Create Socket.IO Server
+const allowedOrigins = process.env.CLIENT_URL
+  ? [process.env.CLIENT_URL, "http://localhost:5173", "http://localhost:5174"]
+  : "*";
+
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://localhost:5173", "http://localhost:5174"],
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
   },
 });
@@ -97,6 +101,6 @@ io.on("connection", (socket) => {
 });
 
 // Start server
-httpServer.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+httpServer.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
 });
