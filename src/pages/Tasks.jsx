@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import Sidebar from "../components/layout/Sidebar";
 import Modal from "../components/ui/Modal";
 import Toast from "../components/ui/Toast";
@@ -17,11 +17,14 @@ import {
   FiUsers,
   FiSettings,
   FiCheck,
-  FiX
+  FiX,
+  FiChevronDown,
+  FiLock,
+  FiLoader
 } from "react-icons/fi";
 import { allUser } from "../api/userApi";
-import { addNewTask as addNewTaskApi, allTask, getUserAddedTask, getUserTask } from "../api/taskApi";
-import noTasksImg from "../assets/no-tasks.png";
+import { addNewTask as addNewTaskApi, allTask, getUserAddedTask, getUserTask, updateTaskStatus } from "../api/taskApi";
+import tasksEmptyImg from "../assets/tasks-empty.jpg";
 import { TaskCardSkeleton } from "../components/ui/Skeleton";
 
 
@@ -74,7 +77,18 @@ function Tasks() {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState(null);
+  const [expandedTaskId, setExpandedTaskId] = useState(null);
+  const [updatingStatusTaskId, setUpdatingStatusTaskId] = useState(null);
+
+  const currentUser = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "{}");
+    } catch {
+      return {};
+    }
+  }, []);
+  const currentUserId = currentUser.id || currentUser._id;
+
   const [isNotificationsOpen, setNotificationsOpen] = useState(false);
   const [isQuickActionsOpen, setQuickActionsOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
@@ -294,25 +308,86 @@ function Tasks() {
     }
   };
 
-  const filteredTasks = activeTab === "All Tasks"
-    ? tasks
-    : activeTab === "Assigned By Me"
-      ? userAddedTasks
-      : activeTab === "Assigned For Me"
-        ? userTasks
-        : tasks.filter(t => (activeTab === "ToDo" || activeTab === "To Do")
-            ? (t.status === "To Do" || t.status === "ToDo" || t.status === "Todo")
-            : t.status === activeTab
-          );
+  const filteredTasks = useMemo(() => {
+    switch (activeTab) {
+      case "All Tasks":
+        return tasks;
+      case "Assigned By Me":
+        return userAddedTasks;
+      case "Assigned For Me":
+        return userTasks;
+      case "ToDo":
+      case "To Do":
+        return tasks.filter(t => t.status === "To Do" || t.status === "ToDo" || t.status === "Todo");
+      case "In Process":
+        return tasks.filter(t => t.status === "In Process" || t.status === "In Progress");
+      case "Completed":
+        return tasks.filter(t => t.status === "Completed" || t.status === "done");
+      default:
+        return tasks;
+    }
+  }, [activeTab, tasks, userAddedTasks, userTasks]);
 
-  const markComplete = (id) => {
-    setTasks(tasks.map(t => t.id === id ? { ...t, status: "Completed", date: "Done" } : t));
-    setUserAddedTasks(userAddedTasks.map(t => t.id === id ? { ...t, status: "Completed", date: "Done" } : t));
-    setUserTasks(userTasks.map(t => t.id === id ? { ...t, status: "Completed", date: "Done" } : t));
-    setSelectedTask(null);
-    setToastMsg("Task marked as completed!");
-    setToastType("success");
+  const isUserAssignedToTask = (task) => {
+    if (!currentUserId || !task) return false;
+    const uidStr = String(currentUserId);
+    if (Array.isArray(task.assignees)) {
+      if (task.assignees.some(a => String(a?.id || a?._id) === uidStr)) return true;
+    }
+    if (Array.isArray(task.rawAssignedTo)) {
+      if (task.rawAssignedTo.some(a => {
+        const id = typeof a === 'object' ? (a?._id || a?.id) : a;
+        return String(id) === uidStr;
+      })) return true;
+    } else if (task.rawAssignedTo) {
+      const id = typeof task.rawAssignedTo === 'object' ? (task.rawAssignedTo._id || task.rawAssignedTo.id) : task.rawAssignedTo;
+      if (String(id) === uidStr) return true;
+    }
+    return false;
   };
+
+  const handleStatusChange = async (taskId, newStatus, e) => {
+    if (e) e.stopPropagation();
+
+    const targetTask =
+      tasks.find(t => t.id === taskId) ||
+      userTasks.find(t => t.id === taskId) ||
+      userAddedTasks.find(t => t.id === taskId);
+
+    if (!targetTask) return;
+
+    if (!isUserAssignedToTask(targetTask)) {
+      setToastMsg("Only the assigned user can change the task status.");
+      setToastType("warning");
+      return;
+    }
+
+    setUpdatingStatusTaskId(taskId);
+    try {
+      const response = await updateTaskStatus(taskId, newStatus);
+      if (response.data?.success) {
+        const updatedDbTask = response.data.data;
+        const mapped = mapDbTask(updatedDbTask, users);
+
+        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: mapped.status } : t));
+        setUserAddedTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: mapped.status } : t));
+        setUserTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: mapped.status } : t));
+
+        setToastMsg(`Status changed to "${newStatus}"!`);
+        setToastType("success");
+      } else {
+        throw new Error(response.data?.message || "Failed to update status");
+      }
+    } catch (err) {
+      console.error("Status update error:", err);
+      setToastMsg(err.response?.data?.message || err.message || "Failed to update status");
+      setToastType("error");
+    } finally {
+      setUpdatingStatusTaskId(null);
+    }
+  };
+
+  const markComplete = (id) => handleStatusChange(id, "Completed");
 
   const addNewTask = async (e) => {
     if (e) e.preventDefault();
@@ -455,7 +530,12 @@ function Tasks() {
                   return (
                     <motion.button
                       key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
+                      onClick={() => {
+                        if (activeTab !== tab.id) {
+                          setActiveTab(tab.id);
+                          setExpandedTaskId(null);
+                        }
+                      }}
                       whileHover={{ y: -1 }}
                       whileTap={{ scale: 0.97 }}
                       style={{
@@ -520,27 +600,27 @@ function Tasks() {
 
             {/* Tasks List */}
             <motion.div variants={itemVariants} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <AnimatePresence mode="popLayout">
-                {isLoading ? (
+              {isLoading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {[1, 2, 3, 4, 5].map((idx) => (
+                    <TaskCardSkeleton key={idx} />
+                  ))}
+                </div>
+              ) : (
+                <AnimatePresence mode="wait" initial={false}>
                   <motion.div
-                    key="tasks-skeleton"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
+                    key={activeTab}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
                     style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
                   >
-                    {[1, 2, 3, 4, 5].map((idx) => (
-                      <TaskCardSkeleton key={idx} />
-                    ))}
-                  </motion.div>
-                ) : filteredTasks.length === 0 ? (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="glass-card"
-                    style={{
-                      padding: '40px',
+                    {filteredTasks.length === 0 ? (
+                      <div
+                        className="glass-card"
+                        style={{
+                          padding: '40px',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
@@ -551,191 +631,507 @@ function Tasks() {
                       border: '1px solid rgba(255, 255, 255, 0.05)'
                     }}
                   >
-                    <img 
-                      src={noTasksImg} 
-                      alt="No tasks found" 
-                      style={{ 
-                        width: '280px', 
-                        height: '280px', 
-                        borderRadius: '24px', 
-                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        objectFit: 'cover'
-                      }} 
-                    />
+                    {/* Modern 3D Floating Glassmorphic Graphic */}
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '8px 0' }}>
+                      {/* Ambient Luminous Halo */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          width: '200px',
+                          height: '200px',
+                          borderRadius: '50%',
+                          background: 'radial-gradient(circle, rgba(91, 140, 255, 0.28) 0%, rgba(65, 238, 130, 0.12) 40%, transparent 70%)',
+                          filter: 'blur(28px)',
+                          pointerEvents: 'none'
+                        }}
+                      />
+                      
+                      <motion.div
+                        animate={{ y: [0, -7, 0] }}
+                        transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
+                        style={{
+                          position: 'relative',
+                          width: '160px',
+                          height: '160px',
+                          borderRadius: '26px',
+                          overflow: 'hidden',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          boxShadow: '0 16px 36px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                          background: 'rgba(13, 19, 34, 0.85)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        <img 
+                          src={tasksEmptyImg} 
+                          alt="No tasks" 
+                          style={{ 
+                            width: '100%', 
+                            height: '100%', 
+                            objectFit: 'cover'
+                          }} 
+                        />
+                      </motion.div>
+                    </div>
+
                     <div>
-                      <h3 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--on-surface)', marginBottom: '8px' }}>
-                        No Tasks Found
+                      <h3 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--on-surface)', marginBottom: '8px', letterSpacing: '-0.2px' }}>
+                        {activeTab === "Completed"
+                          ? "No Completed Tasks Yet"
+                          : activeTab === "In Process"
+                            ? "No Tasks In Progress"
+                            : activeTab === "To Do" || activeTab === "ToDo"
+                              ? "All Caught Up!"
+                              : activeTab === "Assigned By Me"
+                                ? "No Created Tasks"
+                                : activeTab === "Assigned For Me"
+                                  ? "All Clear for You!"
+                                  : "No Tasks Found"}
                       </h3>
-                      <p style={{ fontSize: '15px', color: 'var(--on-surface-variant)', margin: 0, maxWidth: '400px', lineHeight: '1.5' }}>
-                        {activeTab === "Assigned By Me" 
-                          ? "You haven't created any tasks yet." 
-                          : activeTab === "Assigned For Me" 
-                            ? "You don't have any tasks assigned to you right now." 
-                            : `There are currently no tasks in "${activeTab}".`}
+                      <p style={{ fontSize: '14px', color: 'var(--on-surface-variant)', margin: 0, maxWidth: '420px', lineHeight: '1.6' }}>
+                        {activeTab === "Completed"
+                          ? "Tasks marked as completed will appear here. Finish tasks to track your milestones."
+                          : activeTab === "In Process"
+                            ? "There are currently no tasks in progress. Pick up a task from 'To Do' or create a new one to begin."
+                            : activeTab === "To Do" || activeTab === "ToDo"
+                              ? "There are no pending items on your to-do list. Create a task whenever you're ready to plan ahead."
+                              : activeTab === "Assigned By Me"
+                                ? "You haven't assigned any tasks to teammates yet. Create a task and assign it to collaborate."
+                                : activeTab === "Assigned For Me"
+                                  ? "You don't have any tasks assigned to you right now. Great job keeping your plate clean!"
+                                  : `There are currently no tasks in "${activeTab}".`}
                       </p>
                     </div>
+
                     {activeTab !== "Completed" && (
-                      <button className="btn-primary" onClick={() => setCreateModalOpen(true)}>
-                        <FiPlus size={16} style={{ marginRight: '6px' }} />
+                      <button 
+                        className="btn-primary" 
+                        onClick={() => setCreateModalOpen(true)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '10px 22px',
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          borderRadius: '10px',
+                          boxShadow: '0 4px 20px rgba(91, 140, 255, 0.35)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <FiPlus size={16} />
                         Create New Task
                       </button>
                     )}
-                  </motion.div>
-                ) : (
-                  filteredTasks.map((task) => (
-                    <motion.div
-                      key={task.id}
-                      layout
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ duration: 0.2 }}
-                      className="glass-card"
-                      onClick={() => setSelectedTask(task)}
-                      style={{
-                        padding: '20px 24px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        cursor: 'pointer',
-                        borderLeft: task.status === 'Completed' ? '4px solid var(--secondary)' :
-                          task.status === 'In Process' ? '4px solid var(--primary)' :
-                            '4px solid transparent'
-                      }}
-                      whileHover={{ y: -2, boxShadow: '0 8px 16px rgba(0,0,0,0.2)' }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px', flex: 1 }}>
-                        <div style={{ marginTop: '4px', color: task.status === 'Completed' ? 'var(--secondary)' : 'var(--outline)' }}>
-                          <FiCheckCircle size={24} />
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                            <h4 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--on-surface)', textDecoration: task.status === 'Completed' ? 'line-through' : 'none' }}>{task.title}</h4>
-                            <span style={{
-                              fontSize: '11px',
-                              padding: '2px 8px',
-                              borderRadius: '12px',
-                              fontWeight: 600,
-                              background: task.priority === 'High' ? 'rgba(255, 180, 171, 0.15)' :
-                                task.priority === 'Medium' ? 'rgba(255, 184, 116, 0.15)' :
-                                  'rgba(141, 144, 159, 0.15)',
-                              color: task.priority === 'High' ? 'var(--error)' :
-                                task.priority === 'Medium' ? 'var(--tertiary)' :
-                                  'var(--on-surface-variant)'
-                            }}>
-                              {task.priority}
-                            </span>
-                            {task.project && (
-                              <span style={{
-                                fontSize: '11px',
-                                padding: '2px 8px',
-                                borderRadius: '12px',
-                                fontWeight: 600,
-                                background: 'rgba(91, 140, 255, 0.15)',
-                                color: 'var(--primary)'
-                              }}>
-                                {task.project}
-                              </span>
-                            )}
-                            {(activeTab === "All Tasks" || activeTab === "Assigned By Me" || activeTab === "Assigned For Me") && (
-                              <span style={{
-                                fontSize: '11px',
-                                padding: '2px 8px',
-                                borderRadius: '12px',
-                                fontWeight: 600,
-                                background: task.status === 'Completed' ? 'rgba(65, 238, 130, 0.15)' :
-                                  task.status === 'In Process' ? 'rgba(91, 140, 255, 0.15)' :
-                                    'rgba(255, 255, 255, 0.1)',
-                                color: task.status === 'Completed' ? 'var(--secondary)' :
-                                  task.status === 'In Process' ? 'var(--primary)' :
-                                    'var(--on-surface-variant)'
-                              }}>
-                                {task.status}
-                              </span>
-                            )}
-                          </div>
-                          <p style={{ margin: 0, fontSize: '14px', color: 'var(--on-surface-variant)', lineHeight: 1.5, maxWidth: '800px' }}>{task.desc}</p>
-                        </div>
                       </div>
+                    ) : (
+                      filteredTasks.map((task) => {
+                        const isExpanded = expandedTaskId === task.id;
+                        const isAssigned = isUserAssignedToTask(task);
+                        const isUpdating = updatingStatusTaskId === task.id;
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
-                        <div style={{ display: 'flex', gap: '16px', color: 'var(--outline)' }}>
-                          {task.comments > 0 && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
-                              <FiMessageSquare size={16} /> {task.comments}
+                        return (
+                          <div
+                            key={task.id}
+                            className="glass-card"
+                            style={{
+                              padding: 0,
+                          overflow: 'hidden',
+                          borderLeft: task.status === 'Completed' ? '4px solid var(--secondary)' :
+                            task.status === 'In Process' ? '4px solid var(--primary)' :
+                              '4px solid transparent',
+                          background: isExpanded ? 'rgba(255, 255, 255, 0.04)' : undefined
+                        }}
+                      >
+                        {/* Summary Header Row (clicking anywhere expands/collapses) */}
+                        <div
+                          onClick={() => setExpandedTaskId(prev => prev === task.id ? null : task.id)}
+                          style={{
+                            padding: '20px 24px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                            gap: '16px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flex: 1 }}>
+                            {/* Quick Status Toggle Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!isAssigned) {
+                                  setToastMsg("Only the assigned user can change task status.");
+                                  setToastType("warning");
+                                  return;
+                                }
+                                const nextStatus = task.status === 'Completed' ? 'In Process' : 'Completed';
+                                handleStatusChange(task.id, nextStatus, e);
+                              }}
+                              disabled={isUpdating}
+                              title={!isAssigned ? "Only assigned user can change status" : (task.status === 'Completed' ? 'Mark In Process' : 'Mark Complete')}
+                              style={{
+                                marginTop: '2px',
+                                background: 'none',
+                                border: 'none',
+                                padding: 0,
+                                cursor: isAssigned ? 'pointer' : 'not-allowed',
+                                color: isUpdating
+                                  ? 'var(--primary)'
+                                  : task.status === 'Completed'
+                                    ? 'var(--secondary)'
+                                    : isAssigned
+                                      ? 'var(--outline)'
+                                      : 'rgba(141, 144, 159, 0.35)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                            >
+                              {isUpdating ? (
+                                <FiLoader size={22} style={{ animation: 'spin 1s linear infinite' }} />
+                              ) : isAssigned ? (
+                                <FiCheckCircle size={22} />
+                              ) : (
+                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <FiCheckCircle size={22} />
+                                  <FiLock size={11} style={{ position: 'absolute', bottom: -2, right: -3, color: 'var(--tertiary)' }} />
+                                </div>
+                              )}
+                            </button>
+
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                                <h4 style={{
+                                  margin: 0,
+                                  fontSize: '17px',
+                                  fontWeight: 600,
+                                  color: 'var(--on-surface)',
+                                  textDecoration: task.status === 'Completed' ? 'line-through' : 'none'
+                                }}>
+                                  {task.title}
+                                </h4>
+
+                                <span style={{
+                                  fontSize: '11px',
+                                  padding: '2px 8px',
+                                  borderRadius: '12px',
+                                  fontWeight: 600,
+                                  background: task.priority === 'High' ? 'rgba(255, 180, 171, 0.15)' :
+                                    task.priority === 'Medium' ? 'rgba(255, 184, 116, 0.15)' :
+                                      'rgba(141, 144, 159, 0.15)',
+                                  color: task.priority === 'High' ? 'var(--error)' :
+                                    task.priority === 'Medium' ? 'var(--tertiary)' :
+                                      'var(--on-surface-variant)'
+                                }}>
+                                  {task.priority}
+                                </span>
+
+                                {task.project && (
+                                  <span style={{
+                                    fontSize: '11px',
+                                    padding: '2px 8px',
+                                    borderRadius: '12px',
+                                    fontWeight: 600,
+                                    background: 'rgba(91, 140, 255, 0.15)',
+                                    color: 'var(--primary)'
+                                  }}>
+                                    {task.project}
+                                  </span>
+                                )}
+
+                                <span style={{
+                                  fontSize: '11px',
+                                  padding: '2px 8px',
+                                  borderRadius: '12px',
+                                  fontWeight: 600,
+                                  background: task.status === 'Completed' ? 'rgba(65, 238, 130, 0.15)' :
+                                    task.status === 'In Process' ? 'rgba(91, 140, 255, 0.15)' :
+                                      'rgba(255, 255, 255, 0.1)',
+                                  color: task.status === 'Completed' ? 'var(--secondary)' :
+                                    task.status === 'In Process' ? 'var(--primary)' :
+                                      'var(--on-surface-variant)'
+                                }}>
+                                  {task.status}
+                                </span>
+                              </div>
+
+                              <p style={{
+                                margin: 0,
+                                fontSize: '13px',
+                                color: 'var(--on-surface-variant)',
+                                lineHeight: 1.4,
+                                overflow: 'hidden',
+                                textOverflow: isExpanded ? 'clip' : 'ellipsis',
+                                whiteSpace: isExpanded ? 'normal' : 'nowrap',
+                                maxWidth: '750px'
+                              }}>
+                                {task.desc}
+                              </p>
                             </div>
-                          )}
-                          {task.attachments > 0 && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
-                              <FiPaperclip size={16} /> {task.attachments}
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexShrink: 0 }}>
+                            <div style={{ display: 'flex', gap: '16px', color: 'var(--outline)' }}>
+                              {task.comments > 0 && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+                                  <FiMessageSquare size={16} /> {task.comments}
+                                </div>
+                              )}
+                              {task.attachments > 0 && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+                                  <FiPaperclip size={16} /> {task.attachments}
+                                </div>
+                              )}
                             </div>
-                          )}
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--on-surface-variant)', fontSize: '13px' }}>
+                              <FiClock size={16} /> {formatDate(task.date)}
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center' }}>
+                                {(task.assignees && task.assignees.length > 0 ? task.assignees : [task.assignee || UNASSIGNED_MEMBER])
+                                  .slice(0, 3)
+                                  .map((a, idx) => (
+                                    <img
+                                      key={a?.id || idx}
+                                      src={a?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(a?.name || "Unassigned")}`}
+                                      alt={a?.name || "Assignee"}
+                                      title={a?.name}
+                                      style={{
+                                        width: '30px',
+                                        height: '30px',
+                                        borderRadius: '50%',
+                                        objectFit: 'cover',
+                                        border: '2px solid var(--surface-card, #1e293b)',
+                                        marginLeft: idx > 0 ? '-10px' : '0',
+                                        zIndex: 3 - idx
+                                      }}
+                                    />
+                                  ))}
+                                {task.assignees && task.assignees.length > 3 && (
+                                  <div
+                                    style={{
+                                      width: '30px',
+                                      height: '30px',
+                                      borderRadius: '50%',
+                                      background: 'var(--surface-high)',
+                                      color: 'var(--on-surface-variant)',
+                                      fontSize: '11px',
+                                      fontWeight: 600,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      border: '2px solid var(--surface-card, #1e293b)',
+                                      marginLeft: '-10px',
+                                      zIndex: 0
+                                    }}
+                                  >
+                                    +{task.assignees.length - 3}
+                                  </div>
+                                )}
+                              </div>
+                              {(activeTab === "Assigned By Me" || activeTab === "Assigned For Me") && (
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                  <span style={{ fontSize: '11px', color: 'var(--on-surface-variant)' }}>Assigned to</span>
+                                  <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--on-surface)' }}>
+                                    {task.assignees && task.assignees.length > 0
+                                      ? task.assignees.map(a => a.name).join(", ")
+                                      : (task.assignee?.name || "Unassigned")}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Downwards Expand / Collapse Chevron Indicator */}
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '6px',
+                                background: isExpanded ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                                color: 'var(--on-surface-variant)'
+                              }}
+                            >
+                              <FiChevronDown
+                                size={18}
+                                style={{
+                                  transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                                  transition: 'transform 0.25s ease'
+                                }}
+                              />
+                            </div>
+                          </div>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--on-surface-variant)', fontSize: '13px' }}>
-                          <FiClock size={16} /> {formatDate(task.date)}
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center' }}>
-                            {(task.assignees && task.assignees.length > 0 ? task.assignees : [task.assignee || UNASSIGNED_MEMBER])
-                              .slice(0, 3)
-                              .map((a, idx) => (
-                                <img
-                                  key={a?.id || idx}
-                                  src={a?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(a?.name || "Unassigned")}`}
-                                  alt={a?.name || "Assignee"}
-                                  title={a?.name}
-                                  style={{
-                                    width: '30px',
-                                    height: '30px',
-                                    borderRadius: '50%',
-                                    objectFit: 'cover',
-                                    border: '2px solid var(--surface-card, #1e293b)',
-                                    marginLeft: idx > 0 ? '-10px' : '0',
-                                    zIndex: 3 - idx
-                                  }}
-                                />
-                              ))}
-                            {task.assignees && task.assignees.length > 3 && (
+                        {/* Expandable Task Details Section */}
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.25, ease: 'easeInOut' }}
+                              style={{ overflow: 'hidden' }}
+                            >
                               <div
                                 style={{
-                                  width: '30px',
-                                  height: '30px',
-                                  borderRadius: '50%',
-                                  background: 'var(--surface-high)',
-                                  color: 'var(--on-surface-variant)',
-                                  fontSize: '11px',
-                                  fontWeight: 600,
+                                  padding: '0 24px 24px 24px',
+                                  borderTop: '1px solid rgba(255, 255, 255, 0.06)',
                                   display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  border: '2px solid var(--surface-card, #1e293b)',
-                                  marginLeft: '-10px',
-                                  zIndex: 0
+                                  flexDirection: 'column',
+                                  gap: '18px',
+                                  paddingTop: '18px'
                                 }}
                               >
-                                +{task.assignees.length - 3}
+                                {/* Full Description */}
+                                <div>
+                                  <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--on-surface-variant)', fontWeight: 600 }}>
+                                    Description
+                                  </span>
+                                  <p style={{ margin: '6px 0 0 0', fontSize: '14px', color: 'var(--on-surface)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                                    {task.desc || "No description provided."}
+                                  </p>
+                                </div>
+
+                                {/* Metadata Grid */}
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                                    gap: '16px',
+                                    padding: '16px',
+                                    background: 'var(--surface-high)',
+                                    borderRadius: '10px'
+                                  }}
+                                >
+                                  <div>
+                                    <div style={{ fontSize: '11px', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Project</div>
+                                    <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--primary)', marginTop: '4px' }}>
+                                      {task.project || "None"}
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <div style={{ fontSize: '11px', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Due Date</div>
+                                    <div style={{ fontSize: '14px', fontWeight: 500, color: task.date === 'Done' ? 'var(--secondary)' : 'var(--on-surface)', marginTop: '4px' }}>
+                                      {formatDate(task.date)}
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <div style={{ fontSize: '11px', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Priority</div>
+                                    <div style={{ fontSize: '14px', fontWeight: 500, color: task.priority === 'High' ? 'var(--error)' : task.priority === 'Medium' ? 'var(--tertiary)' : 'var(--on-surface)', marginTop: '4px' }}>
+                                      {task.priority}
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <div style={{ fontSize: '11px', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assignees ({task.assignees?.length || 1})</div>
+                                    <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--on-surface)', marginTop: '4px' }}>
+                                      {task.assignees && task.assignees.length > 0
+                                        ? task.assignees.map(a => a.name).join(", ")
+                                        : (task.assignee?.name || "Unassigned")}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Status Change Control Section */}
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    flexWrap: 'wrap',
+                                    gap: '12px',
+                                    paddingTop: '8px',
+                                    borderTop: '1px solid rgba(255, 255, 255, 0.05)'
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--on-surface-variant)' }}>
+                                      Change Status:
+                                    </span>
+                                    {!isAssigned && (
+                                      <span
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '5px',
+                                          fontSize: '11px',
+                                          color: 'var(--tertiary)',
+                                          background: 'rgba(255, 184, 116, 0.1)',
+                                          padding: '3px 8px',
+                                          borderRadius: '6px'
+                                        }}
+                                      >
+                                        <FiLock size={12} /> Only assigned user can change status
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Status Option Buttons */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    {["To Do", "In Process", "Completed"].map((st) => {
+                                      const isCurrent = task.status === st;
+                                      return (
+                                        <button
+                                          key={st}
+                                          type="button"
+                                          disabled={!isAssigned || isUpdating}
+                                          onClick={(e) => handleStatusChange(task.id, st, e)}
+                                          title={!isAssigned ? "Only assigned user can change status" : `Set to ${st}`}
+                                          style={{
+                                            padding: '6px 14px',
+                                            borderRadius: '8px',
+                                            fontSize: '12px',
+                                            fontWeight: 600,
+                                            cursor: !isAssigned ? 'not-allowed' : (isUpdating ? 'wait' : 'pointer'),
+                                            opacity: !isAssigned ? 0.45 : 1,
+                                            border: isCurrent
+                                              ? (st === 'Completed' ? '1px solid var(--secondary)' : st === 'In Process' ? '1px solid var(--primary)' : '1px solid var(--outline-variant)')
+                                              : '1px solid rgba(255, 255, 255, 0.1)',
+                                            background: isCurrent
+                                              ? (st === 'Completed' ? 'rgba(65, 238, 130, 0.2)' : st === 'In Process' ? 'rgba(91, 140, 255, 0.2)' : 'rgba(255, 255, 255, 0.12)')
+                                              : 'transparent',
+                                            color: isCurrent
+                                              ? (st === 'Completed' ? 'var(--secondary)' : st === 'In Process' ? 'var(--primary)' : 'var(--on-surface)')
+                                              : 'var(--on-surface-variant)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            transition: 'all 0.15s ease'
+                                          }}
+                                        >
+                                          {isCurrent && isUpdating ? (
+                                            <FiLoader size={12} style={{ animation: 'spin 1s linear infinite' }} />
+                                          ) : isCurrent ? (
+                                            <FiCheck size={12} />
+                                          ) : null}
+                                          {st}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
                               </div>
-                            )}
-                          </div>
-                          {(activeTab === "Assigned By Me" || activeTab === "Assigned For Me") && (
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                              <span style={{ fontSize: '11px', color: 'var(--on-surface-variant)' }}>Assigned to</span>
-                              <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--on-surface)' }}>
-                                {task.assignees && task.assignees.length > 0
-                                  ? task.assignees.map(a => a.name).join(", ")
-                                  : (task.assignee?.name || "Unassigned")}
-                              </span>
-                            </div>
+                            </motion.div>
                           )}
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))
-                )}
-              </AnimatePresence>
+                        </AnimatePresence>
+                          </div>
+                        );
+                      })
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+              )}
             </motion.div>
           </motion.div>
         </div>
@@ -1018,103 +1414,7 @@ function Tasks() {
         </form>
       </Modal>
 
-      {/* Task Details Modal */}
-      <Modal isOpen={!!selectedTask} onClose={() => setSelectedTask(null)} title="Task Details">
-        {selectedTask && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{
-                fontSize: '11px',
-                padding: '4px 10px',
-                borderRadius: '12px',
-                fontWeight: 600,
-                background: selectedTask.priority === 'High' ? 'rgba(255, 180, 171, 0.15)' : 'rgba(255, 184, 116, 0.15)',
-                color: selectedTask.priority === 'High' ? 'var(--error)' : 'var(--tertiary)'
-              }}>
-                {selectedTask.priority} Priority
-              </span>
-              <span style={{ fontSize: '13px', color: 'var(--on-surface-variant)' }}>{selectedTask.status}</span>
-            </div>
 
-            <h3 style={{ margin: 0, fontSize: '24px', fontWeight: 600 }}>{selectedTask.title}</h3>
-            <p style={{ margin: 0, fontSize: '15px', color: 'var(--on-surface-variant)', lineHeight: 1.6 }}>{selectedTask.desc}</p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', padding: '16px', background: 'var(--surface-high)', borderRadius: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  {(selectedTask.assignees && selectedTask.assignees.length > 0 ? selectedTask.assignees : [selectedTask.assignee || UNASSIGNED_MEMBER])
-                    .slice(0, 3)
-                    .map((a, idx) => (
-                      <img
-                        key={a?.id || idx}
-                        src={a?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(a?.name || "Unassigned")}`}
-                        alt={a?.name || "Assignee"}
-                        title={a?.name}
-                        style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '50%',
-                          objectFit: 'cover',
-                          border: '2px solid var(--surface-card, #1e293b)',
-                          marginLeft: idx > 0 ? '-10px' : '0',
-                          zIndex: 3 - idx
-                        }}
-                      />
-                    ))}
-                  {selectedTask.assignees && selectedTask.assignees.length > 3 && (
-                    <div
-                      style={{
-                        width: '36px',
-                        height: '36px',
-                        borderRadius: '50%',
-                        background: 'var(--surface-high)',
-                        color: 'var(--on-surface-variant)',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        border: '2px solid var(--surface-card, #1e293b)',
-                        marginLeft: '-10px',
-                        zIndex: 0
-                      }}
-                    >
-                      +{selectedTask.assignees.length - 3}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <div style={{ fontSize: '11px', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Assignee{selectedTask.assignees?.length > 1 ? `s (${selectedTask.assignees.length})` : ''}
-                  </div>
-                  <div style={{ fontSize: '14px', fontWeight: 500 }}>
-                    {selectedTask.assignees && selectedTask.assignees.length > 0
-                      ? selectedTask.assignees.map(a => a.name).join(", ")
-                      : (selectedTask.assignee?.name || "Unassigned")}
-                  </div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <div style={{ fontSize: '11px', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Project</div>
-                <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--primary)' }}>{selectedTask.project || "N/A"}</div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gridColumn: 'span 2', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px', marginTop: '4px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '11px', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Due Date</span>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: selectedTask.date === 'Done' ? 'var(--secondary)' : 'var(--on-surface)' }}>{formatDate(selectedTask.date)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
-              <button className="btn-secondary" onClick={() => setSelectedTask(null)}>Close</button>
-              {selectedTask.status !== 'Completed' && (
-                <button className="btn-primary" onClick={() => markComplete(selectedTask.id)}>Mark as Complete</button>
-              )}
-            </div>
-          </div>
-        )}
-      </Modal>
 
       {/* Quick Actions Modal */}
       <Modal isOpen={isQuickActionsOpen} onClose={() => setQuickActionsOpen(false)} title="Quick Actions">
